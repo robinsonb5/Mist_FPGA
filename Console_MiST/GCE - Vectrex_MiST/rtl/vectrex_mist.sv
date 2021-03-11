@@ -14,6 +14,7 @@ module vectrex_mist
 	input         SPI_DI,
 	input         SPI_SS2,
 	input         SPI_SS3,
+	input         SPI_SS4,
 	input         CONF_DATA0,
 
 	output [12:0] SDRAM_A,
@@ -29,7 +30,7 @@ module vectrex_mist
 	output        SDRAM_CKE
 );
 
-`include "rtl\build_id.v" 
+`include "build_id.v" 
 
 localparam CONF_STR = {
 	"Vectrex;BINVECROM;",
