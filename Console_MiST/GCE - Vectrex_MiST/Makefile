@@ -2,11 +2,7 @@ DEMISTIFYPATH=../../DeMiSTify
 PROJECT=vectrex
 BOARD=
 
-all: buildid submodules vbcc firmware init compile
-
-.PHONY: buildid
-buildid:
-	quartus_sh -t rtl/build_id.tcl
+all: submodules vbcc firmware init compile
 
 submodules: $(DEMISTIFYPATH)/Makefile
 
@@ -18,8 +14,8 @@ $(DEMISTIFYPATH)/DeMiSTify/Makefile:
 	git submodule update --init --recursive
 
 .PHONY: firmware
-firmware: submodules firmware_overrides
-	make -f $(DEMISTIFYPATH)/Makefile DEMISTIFYPATH=$(DEMISTIFYPATH) firmware OVERRIDES=../../Console_MiST/GCE\ -\ Vectrex_MiST/firmware_overrides
+firmware: submodules
+	make -C firmware -f ../$(DEMISTIFYPATH)/Scripts/firmware.mk DEMISTIFYPATH=../$(DEMISTIFYPATH)
 
 .PHONY: init
 init:
