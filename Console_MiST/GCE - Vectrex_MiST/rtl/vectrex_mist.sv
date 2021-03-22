@@ -62,7 +62,7 @@ wire  [3:0] r, g, b;
 wire 			hb, vb;
 wire       	blankn = ~(hb | vb);
 wire 			cart_rd;
-wire [14:0] cart_addr;
+wire [15:0] cart_addr;
 wire  [7:0] cart_do;
 wire        ioctl_downl;
 wire  [7:0] ioctl_index;

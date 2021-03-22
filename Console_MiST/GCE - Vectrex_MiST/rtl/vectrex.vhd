@@ -154,7 +154,7 @@ port
 	frame		    : out std_logic;
 	
 	audio_out    : out std_logic_vector(9 downto 0);
-	cart_addr    : out std_logic_vector(14 downto 0);
+	cart_addr    : out std_logic_vector(15 downto 0); -- AMR, full address width
 	cart_do      : in std_logic_vector( 7 downto 0);
 	cart_rd      : out std_logic;	
 	btn11        : in std_logic;
@@ -453,11 +453,12 @@ ram_we <=   '1' when cpu_rw = '0' and ram_cs = '1' else '0';
 -- misc
 cpu_irq <= not via_irq_n;
 cpu_firq <= btn14;
-cart_rd <= cart_cs;
+cart_rd <= cart_cs or rom_cs; -- AMR move ROM to SDRAM
 cpu_di <= cart_do when cart_cs  = '1' else
 			 ram_do  when ram_cs   = '1' else
 			 via_do  when via_cs_n = '0' else
-			 rom_do  when rom_cs   = '1' else
+--			 rom_do  when rom_cs   = '1' else -- AMR move ROM to SDRAM
+			 cart_do  when rom_cs   = '1' else
 			 X"00";
 
 via_pa_i <= ay_do;
@@ -857,12 +858,14 @@ port map
 	nFIRQ  => not cpu_firq
 );
 
-cpu_prog_rom : entity work.vectrex_exec_prom
-port map(
- clk  => clock_24,
- addr => cpu_addr(12 downto 0),
- data => rom_do
-);
+-- AMR - move ROM to SDRAM
+
+--cpu_prog_rom : entity work.vectrex_exec_prom
+--port map(
+-- clk  => clock_24,
+-- addr => cpu_addr(12 downto 0),
+-- data => rom_do
+--);
 
 --------------------------------------------------------------------
 -- Select cartridge here, select right rom length within port map
@@ -892,7 +895,7 @@ port map(
 --);
 --------------------------------------------------------------------
 
-cart_addr <= cpu_addr(14 downto 0);
+cart_addr <= cpu_addr(15 downto 0); -- AMR - full address width
 
 working_ram : entity work.gen_ram
 generic map( dWidth => 8, aWidth => 10)

@@ -1,4 +1,6 @@
 #include "keyboard.h"
+#include "userio.h"
+#include "spi.h"
 
 /* Key -> gamepad mapping.  We override this to swap buttons A and B for NES. */
 
@@ -36,5 +38,32 @@ void Menu_Joystick(int port,int joymap)
 }
 
 /* Initial ROM */
-const char *bootrom_name="AUTOBOOTSMS";
+const char *bootrom_name="AUTOBOOTVEC";
+
+extern int romtype;
+
+char *autoboot()
+{
+	int i;
+	romtype=-1;
+
+	SPI(0xff);
+	SPI_ENABLE(HW_SPI_CONF);
+	SPI(UIO_SET_STATUS2); // Read conf string command
+	SPI(1);
+	SPI_DISABLE(HW_SPI_CONF);
+
+	i=LoadROM("VECTREX BIN");
+
+	SPI(0xff);
+	SPI_ENABLE(HW_SPI_CONF);
+	SPI(UIO_SET_STATUS2); // Read conf string command
+	SPI(0);
+	SPI_DISABLE(HW_SPI_CONF);
+
+	if(!i)
+		return("VECTREX.BIN not found!");
+	return(0);
+}
+
 
