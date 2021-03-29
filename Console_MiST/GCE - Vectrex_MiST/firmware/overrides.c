@@ -26,11 +26,20 @@ unsigned char joy_keymap[]=
 
 /* Override menu_joystick to emulate analogue sticks */
 
+extern int analoguesensitivity;
 int analogue[4];
 
 void Menu_Joystick(int port,int joymap)
 {
 	int *a=&analogue[2*port];
+	if(TestKey(KEY_F1))
+		analoguesensitivity=0x20;
+	if(TestKey(KEY_F2))
+		analoguesensitivity=0x10;
+	if(TestKey(KEY_F3))
+		analoguesensitivity=0x0c;
+	if(TestKey(KEY_F4))
+		analoguesensitivity=0x08;
 	user_io_digital_joystick_ext(port, joymap);
 	Menu_JoystickToAnalogue(a,joymap);
 	Menu_JoystickToAnalogue(a+1,joymap>>2);

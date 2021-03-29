@@ -5,7 +5,7 @@
 create_generated_clock -name clkdiv -source [get_nets {guest|pll|altpll_component|auto_generated|wire_pll1_clk[0]}] -divide_by 32 [get_keepers {vectrex_mist:guest|vectrex:vectrex|clock_div2[6]}]
 
 # Automatically constrain PLL and other generated clocks
-derive_pll_clocks -create_base_clocks
+derive_pll_clocks
 
 # Automatically calculate clock uncertainty to jitter and other effects.
 derive_clock_uncertainty
@@ -26,5 +26,6 @@ set_output_delay -clock [get_clocks {guest|pll|altpll_component|auto_generated|p
 set_multicycle_path -to ${VGA_OUT} -setup 2
 set_multicycle_path -to ${VGA_OUT} -hold 1
 
-set_false_path -to [get_ports {RAM_CLK}]
+set_false_path -to [get_ports ${RAM_CLK}]
 set_false_path -to ${FALSE_OUT}
+set_false_path -from ${FALSE_IN}
