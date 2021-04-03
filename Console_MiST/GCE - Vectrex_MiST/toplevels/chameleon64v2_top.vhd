@@ -248,6 +248,7 @@ architecture rtl of chameleon64v2_top is
 		);
 	END COMPONENT;
 	
+	signal buttons : std_logic_vector(7 downto 0);
 	signal vol_up : std_logic;
 	signal vol_down : std_logic;
 	signal cdtv_port : std_logic;
@@ -256,6 +257,8 @@ architecture rtl of chameleon64v2_top is
 	signal c64_menu : std_logic;
 	signal gp1_run : std_logic;
 	signal gp1_select :std_logic;
+	signal gp1_1 : std_logic;
+	signal gp1_2 : std_logic;
 	signal gp2_run : std_logic;
 	signal gp2_select : std_logic;
 	
@@ -263,6 +266,7 @@ architecture rtl of chameleon64v2_top is
 	signal porta_select : std_logic;
 	signal portb_start : std_logic;
 	signal portb_select : std_logic;
+	signal porta_extra : unsigned(5 downto 0);
 	
 begin
 
@@ -453,13 +457,25 @@ begin
 
 	keys_safe <= '1' when c64_joy1="1111111" else '0';
 
+	buttons(0) <= c64_menu and usart_cts and not power_button;
+
 	-- Update c64 keys only when the joystick isn't active.
 	process (clk_100)
 	begin
 		if rising_edge(clk_100) then
 			if keys_safe='1' then
-				gp1_run <= c64_keys(8); -- Return
-				gp1_select <= c64_keys(38); -- Right shift
+				buttons(1)<=c64_keys(32); -- F1
+				buttons(2)<=c64_keys(40); -- F2
+				buttons(3)<=c64_keys(48); -- F3
+				buttons(4)<=c64_keys(24); -- F4
+				gp1_run <= c64_keys(38); -- Right shift
+				gp1_select <= c64_keys(62); -- Slash / ?
+				porta_extra(5) <= c64_keys(61) and c64_keys(8); -- comma / < and return
+				porta_extra(4) <= c64_keys(37); -- period / >
+				porta_extra(3) <= c64_keys(18); -- D
+				porta_extra(2) <= c64_keys(17); -- A
+				porta_extra(1) <= c64_keys(41); -- S 
+				porta_extra(0) <= c64_keys(9); -- W
 				gp2_run <= c64_keys(63); -- Run/stop
 				gp2_select <= c64_keys(57); -- Left shift;
 				c64_menu <= c64_keys(15); -- Left arrow;
@@ -473,7 +489,7 @@ begin
 	portb_start <= (not cdtv_port) or ((not play_button) and gp2_run);
 	portb_select <= ((not cdtv_port) or ((not vol_up) and gp2_select)) and c64_joy2(6);
 
-	joy1<=porta_start & porta_select & (c64_joy1(5 downto 0) and cdtv_joya);
+	joy1<=porta_start & porta_select & (c64_joy1(5 downto 0) and cdtv_joya and porta_extra);
 	joy2<=portb_start & portb_select & (c64_joy2(5 downto 0) and cdtv_joyb);
 	joy3<="1" & joystick3;
 	joy4<="1" & joystick4;
@@ -568,7 +584,7 @@ begin
 		joy3 => std_logic_vector(joy3),
 		joy4 => std_logic_vector(joy4),
 
-		menu_button => c64_menu and usart_cts and not power_button,
+		buttons => buttons,
 		
 		-- UART
 		rxd => rs232_rxd,
