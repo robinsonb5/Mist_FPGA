@@ -508,7 +508,7 @@ begin
 	controller : entity work.substitute_mcu
 	generic map (
 		sysclk_frequency => 500,
-		debug => true
+		debug => false
 	)
 	port map (
 		clk => clk_50,
