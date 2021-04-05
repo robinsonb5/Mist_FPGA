@@ -224,19 +224,15 @@ architecture rtl of chameleon64_top is
 
 	signal keys_safe : std_logic;
 	signal c64_menu : std_logic;
-	signal gp1_run : std_logic;
-	signal gp1_select : std_logic;
-	signal gp1_1 : std_logic;
-	signal gp1_2 : std_logic;
-	signal gp2_run : std_logic;
-	signal gp2_select : std_logic;
 
 	signal porta_start : std_logic;
 	signal porta_select : std_logic;
 	signal portb_start : std_logic;
 	signal portb_select : std_logic;
-	signal porta_extra : unsigned(5 downto 0);
+	signal porta_extra : unsigned(7 downto 0);
+	signal portb_extra : unsigned(7 downto 0);
 
+	
 begin
 
 -- -----------------------------------------------------------------------
@@ -405,37 +401,44 @@ begin
 	keys_safe <= '1' when c64_joy1="1111111" else '0';
 
 	buttons(7 downto 5)<=(others => '1');
-	buttons(0)<=usart_cts and not power_button;	-- Menu button
+	buttons(0) <= c64_menu and usart_cts and not power_button;
 
 	-- Update c64 keys only when the joystick isn't active.
 	process (clk_100)
 	begin
 		if rising_edge(clk_100) then
 			if keys_safe='1' then
-				buttons(1)<=c64_keys(32);
-				buttons(2)<=c64_keys(40);
-				buttons(3)<=c64_keys(48);
-				buttons(4)<=c64_keys(24);
-				gp1_run <= c64_keys(11); -- Right shift
-				gp1_select <= c64_keys(8); -- Slash / ?
-				gp1_2 <= c64_keys(16); -- comma / <
-				gp1_2 <= c64_keys(19); -- period / >
-				gp2_run <= c64_keys(0); -- Run/stop
-				gp2_select <= c64_keys(48); -- Left shift;
-				c64_menu <= c64_keys(54); -- Up arrow;
+				buttons(1)<=c64_keys(32); -- F1
+				buttons(2)<=c64_keys(40); -- F2
+				buttons(3)<=c64_keys(48); -- F3
+				buttons(4)<=c64_keys(24); -- F4
+				porta_extra(4) <= c64_keys(38); -- Right shift
+				porta_extra(5) <= c64_keys(62); -- Slash / ?
+				porta_extra(6) <= c64_keys(37); -- period / >
+				porta_extra(7) <= c64_keys(61) and c64_keys(8); -- comma / < and return
+				porta_extra(3) <= c64_keys(18); -- D
+				porta_extra(2) <= c64_keys(17); -- A
+				porta_extra(1) <= c64_keys(41); -- S 
+				porta_extra(0) <= c64_keys(9); -- W
+				portb_extra(7) <= c64_keys(63); -- Run/stop
+				portb_extra(6) <= c64_keys(57); -- Left shift
+				portb_extra(5 downto 0) <= (others => '1');
+				c64_menu <= c64_keys(15); -- Left arrow;
 			end if;
 		end if;
 	end process;
 	
-	porta_start <= cdtv_port or ((not play_button) and gp1_run);
-	porta_select <= (cdtv_port or ((not vol_up) and gp1_select)) and c64_joy1(6);
-	porta_extra <= gp1_2 & gp1_1 & "1111";
+	porta_start <= cdtv_port or not play_button;
+	porta_select <= cdtv_port or not vol_up;
 
-	portb_start <= (not cdtv_port) or ((not play_button) and gp2_run);
-	portb_select <= ((not cdtv_port) or ((not vol_up) and gp2_select)) and c64_joy2(6);
+	portb_start <= (not cdtv_port) or not play_button;
+	portb_select <= (not cdtv_port) or not vol_up;
 
-	joy1<=porta_start & porta_select & (c64_joy1(5 downto 0) and (cdtv_joya and porta_extra));
-	joy2<=portb_start & portb_select & (c64_joy2(5 downto 0) and cdtv_joyb);
+	joy1<=(porta_start & porta_select & cdtv_joya)
+					and ('1' & c64_joy1(6 downto 0)) and porta_extra;
+	joy2<=(portb_start & portb_select & cdtv_joyb) 
+					and ('1' & c64_joy2(6 downto 0)) and portb_extra;
+					
 	joy3<="1" & joystick3;
 	joy4<="1" & joystick4;
 
@@ -446,7 +449,7 @@ begin
 	guest: COMPONENT vectrex_mist
 	PORT map
 	(
-			CLOCK_27 => clk8,
+			CLOCK_27 => clk_50,	-- Failing to lock using clk8 - why?
 --			RESET_N => reset_n,
 			-- clocks
 			
@@ -505,7 +508,7 @@ begin
 	controller : entity work.substitute_mcu
 	generic map (
 		sysclk_frequency => 500,
-		debug => false
+		debug => true
 	)
 	port map (
 		clk => clk_50,
@@ -517,6 +520,7 @@ begin
 		spi_mosi	=> spi_mosi,
 		spi_clk => spi_clk_int,
 		spi_cs => mmc_cs,
+		spi_ack => spi_ack,
 		spi_fromguest => spi_fromguest,
 		spi_toguest => spi_toguest,
 		spi_ss2 => spi_ss2,
@@ -536,10 +540,10 @@ begin
 
 		-- Joysticks
 		
-		joy1 => std_logic_vector(joy1), -- Swap buttons A & B
-		joy2 => std_logic_vector(joy2), -- Swap buttons A & B
-		joy3 => std_logic_vector(joy3),
-		joy4 => std_logic_vector(joy4),
+		joy1 => std_logic_vector(joy1(4)&joy1(5)&joy1(6)&joy1(7)&joy1(3 downto 0)),
+		joy2 => std_logic_vector(joy2(4)&joy2(5)&joy2(6)&joy2(7)&joy2(3 downto 0)),
+		joy3 => std_logic_vector(joy3(4)&joy3(5)&joy3(6)&joy3(7)&joy3(3 downto 0)),
+		joy4 => std_logic_vector(joy4(4)&joy4(5)&joy4(6)&joy4(7)&joy4(3 downto 0)),
 
 		buttons => buttons,
 

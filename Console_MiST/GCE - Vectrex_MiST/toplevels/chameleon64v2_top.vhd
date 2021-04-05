@@ -255,18 +255,13 @@ architecture rtl of chameleon64v2_top is
 
 	signal keys_safe : std_logic;
 	signal c64_menu : std_logic;
-	signal gp1_run : std_logic;
-	signal gp1_select :std_logic;
-	signal gp1_1 : std_logic;
-	signal gp1_2 : std_logic;
-	signal gp2_run : std_logic;
-	signal gp2_select : std_logic;
 	
 	signal porta_start : std_logic;
 	signal porta_select : std_logic;
 	signal portb_start : std_logic;
 	signal portb_select : std_logic;
-	signal porta_extra : unsigned(5 downto 0);
+	signal porta_extra : unsigned(7 downto 0);
+	signal portb_extra : unsigned(7 downto 0);
 	
 begin
 
@@ -469,29 +464,33 @@ begin
 				buttons(2)<=c64_keys(40); -- F2
 				buttons(3)<=c64_keys(48); -- F3
 				buttons(4)<=c64_keys(24); -- F4
-				gp1_run <= c64_keys(38); -- Right shift
-				gp1_select <= c64_keys(62); -- Slash / ?
-				porta_extra(5) <= c64_keys(61) and c64_keys(8); -- comma / < and return
-				porta_extra(4) <= c64_keys(37); -- period / >
+				porta_extra(4) <= c64_keys(38); -- Right shift
+				porta_extra(5) <= c64_keys(62); -- Slash / ?
+				porta_extra(6) <= c64_keys(37); -- period / >
+				porta_extra(7) <= c64_keys(61) and c64_keys(8); -- comma / < and return
 				porta_extra(3) <= c64_keys(18); -- D
 				porta_extra(2) <= c64_keys(17); -- A
 				porta_extra(1) <= c64_keys(41); -- S 
 				porta_extra(0) <= c64_keys(9); -- W
-				gp2_run <= c64_keys(63); -- Run/stop
-				gp2_select <= c64_keys(57); -- Left shift;
+				portb_extra(7) <= c64_keys(63); -- Run/stop
+				portb_extra(6) <= c64_keys(57); -- Left shift
+				portb_extra(5 downto 0) <= (others => '1');
 				c64_menu <= c64_keys(15); -- Left arrow;
 			end if;
 		end if;
 	end process;
 	
-	porta_start <= cdtv_port or ((not play_button) and gp1_run);
-	porta_select <= (cdtv_port or ((not vol_up) and gp1_select)) and c64_joy1(6);
+	porta_start <= cdtv_port or not play_button;
+	porta_select <= cdtv_port or not vol_up;
 
-	portb_start <= (not cdtv_port) or ((not play_button) and gp2_run);
-	portb_select <= ((not cdtv_port) or ((not vol_up) and gp2_select)) and c64_joy2(6);
+	portb_start <= (not cdtv_port) or not play_button;
+	portb_select <= (not cdtv_port) or not vol_up;
 
-	joy1<=porta_start & porta_select & (c64_joy1(5 downto 0) and cdtv_joya and porta_extra);
-	joy2<=portb_start & portb_select & (c64_joy2(5 downto 0) and cdtv_joyb);
+	joy1<=(porta_start & porta_select & cdtv_joya)
+					and ('1' & c64_joy1(6 downto 0)) and porta_extra;
+	joy2<=(portb_start & portb_select & cdtv_joyb) 
+					and ('1' & c64_joy2(6 downto 0)) and portb_extra;
+					
 	joy3<="1" & joystick3;
 	joy4<="1" & joystick4;
 
@@ -580,10 +579,10 @@ begin
 
 		-- Joysticks
 		
-		joy1 => std_logic_vector(joy1(7 downto 6)&joy1(4)&joy1(5)&joy1(3 downto 0)), -- Swap buttons A & B
-		joy2 => std_logic_vector(joy2(7 downto 6)&joy2(4)&joy2(5)&joy2(3 downto 0)), -- Swap buttons A & B
-		joy3 => std_logic_vector(joy3),
-		joy4 => std_logic_vector(joy4),
+		joy1 => std_logic_vector(joy1(4)&joy1(5)&joy1(6)&joy1(7)&joy1(3 downto 0)),
+		joy2 => std_logic_vector(joy2(4)&joy2(5)&joy2(6)&joy2(7)&joy2(3 downto 0)),
+		joy3 => std_logic_vector(joy3(4)&joy3(5)&joy3(6)&joy3(7)&joy3(3 downto 0)),
+		joy4 => std_logic_vector(joy4(4)&joy4(5)&joy4(6)&joy4(7)&joy4(3 downto 0)),
 
 		buttons => buttons,
 		
