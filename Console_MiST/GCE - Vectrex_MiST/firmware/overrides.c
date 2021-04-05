@@ -76,6 +76,10 @@ char *autoboot()
 
 	if(!i)
 		return("VECTREX.BIN not found!");
+
+	romtype=0;
+	i=LoadROM(bootrom_name);
+
 	return(0);
 }
 

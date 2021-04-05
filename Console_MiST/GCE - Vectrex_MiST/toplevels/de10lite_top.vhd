@@ -256,7 +256,7 @@ sd_clk <= spi_clk_int;
 controller : entity work.substitute_mcu
 	generic map (
 		sysclk_frequency => 500,
-		debug => true
+		debug => false
 	)
 	port map (
 		clk => MAX10_CLK1_50,
@@ -287,7 +287,7 @@ controller : entity work.substitute_mcu
 
 		-- Menu button
 		
-		menu_button => KEY(1),
+		buttons(0) => KEY(1),
 		
 		-- UART
 		rxd => rs232_rxd,
