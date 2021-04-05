@@ -27,7 +27,7 @@ unsigned char joy_keymap[]=
 
 /* Override menu_joystick to emulate analogue sticks */
 
-extern int analoguesensitivity;
+int analoguesensitivity=0x80;
 int analogue[4];
 
 void Menu_Joystick(int port,int joymap)

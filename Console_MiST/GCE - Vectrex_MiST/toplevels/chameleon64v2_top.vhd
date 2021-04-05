@@ -457,6 +457,7 @@ begin
 
 	keys_safe <= '1' when c64_joy1="1111111" else '0';
 
+	buttons(7 downto 5)<=(others => '1');
 	buttons(0) <= c64_menu and usart_cts and not power_button;
 
 	-- Update c64 keys only when the joystick isn't active.

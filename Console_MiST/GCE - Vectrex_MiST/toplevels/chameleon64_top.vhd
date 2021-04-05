@@ -404,7 +404,8 @@ begin
 
 	keys_safe <= '1' when c64_joy1="1111111" else '0';
 
-	buttons(0)=usart_cts and not power_button,	-- Menu button
+	buttons(7 downto 5)<=(others => '1');
+	buttons(0)<=usart_cts and not power_button;	-- Menu button
 
 	-- Update c64 keys only when the joystick isn't active.
 	process (clk_100)
@@ -540,7 +541,7 @@ begin
 		joy3 => std_logic_vector(joy3),
 		joy4 => std_logic_vector(joy4),
 
-		buttons => buttons;
+		buttons => buttons,
 
 		-- UART
 		rxd => rs232_rxd,
