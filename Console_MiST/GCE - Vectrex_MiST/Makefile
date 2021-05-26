@@ -3,7 +3,7 @@ PROJECT=vectrex
 BOARD=
 include $(DEMISTIFYPATH)/site.mk
 
-all: submodules vbcc firmware init build_id compile
+all: submodules vbcc firmware init compile
 
 submodules: $(DEMISTIFYPATH)/Makefile
 
@@ -20,7 +20,7 @@ firmware: submodules
 
 .PHONY: build_id
 build_id:
-	@$(Q13)/quartus_sh >build_id.log -t rtl/build_id.tcl
+	$(Q13)/quartus_sh >build_id.log -t rtl/build_id.tcl
 
 .PHONY: init
 init:

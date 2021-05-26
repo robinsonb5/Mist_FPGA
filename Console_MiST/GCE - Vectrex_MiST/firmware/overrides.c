@@ -53,12 +53,12 @@ __weak int rom_minsize=8192;
 /* Initial ROM */
 const char *bootrom_name="AUTOBOOTVEC";
 
-extern int romtype;
+extern unsigned char romtype;
 
 char *autoboot()
 {
 	int i;
-	romtype=-1;
+	romtype=0;
 
 	SPI(0xff);
 	SPI_ENABLE(HW_SPI_CONF);
@@ -77,7 +77,7 @@ char *autoboot()
 	if(!i)
 		return("VECTREX.BIN not found!");
 
-	romtype=0;
+	romtype=1;
 	i=LoadROM(bootrom_name);
 
 	return(0);
