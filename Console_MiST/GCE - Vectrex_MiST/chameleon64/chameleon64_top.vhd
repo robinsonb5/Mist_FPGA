@@ -9,6 +9,9 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use IEEE.numeric_std.ALL;
 
+library work;
+use work.demistify_config_pkg.all;
+
 -- -----------------------------------------------------------------------
 
 entity chameleon64_top is
@@ -181,41 +184,6 @@ architecture rtl of chameleon64_top is
 	signal hsync_n_dithered : std_logic;
 	signal vsync_n_dithered : std_logic;
 
-	-- Declare guest component, since it's written in systemverilog
-	
-	COMPONENT vectrex_mist
-		PORT
-		(
-			CLOCK_27 :	IN STD_LOGIC;
-	--		RESET_N :   IN std_logic;
-			SDRAM_DQ		:	 INOUT STD_LOGIC_VECTOR(15 DOWNTO 0);
-			SDRAM_A		:	 OUT STD_LOGIC_VECTOR(12 DOWNTO 0);
-			SDRAM_DQML		:	 OUT STD_LOGIC;
-			SDRAM_DQMH		:	 OUT STD_LOGIC;
-			SDRAM_nWE		:	 OUT STD_LOGIC;
-			SDRAM_nCAS		:	 OUT STD_LOGIC;
-			SDRAM_nRAS		:	 OUT STD_LOGIC;
-			SDRAM_nCS		:	 OUT STD_LOGIC;
-			SDRAM_BA		:	 OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
-			SDRAM_CLK		:	 OUT STD_LOGIC;
-			SDRAM_CKE		:	 OUT STD_LOGIC;
-			SPI_DO		:	 OUT STD_LOGIC;
-	--		SPI_SD_DI	:	 IN STD_LOGIC;
-			SPI_DI		:	 IN STD_LOGIC;
-			SPI_SCK		:	 IN STD_LOGIC;
-			SPI_SS2		:	 IN STD_LOGIC;
-			SPI_SS3		:	 IN STD_LOGIC;
-			SPI_SS4		:	 IN STD_LOGIC;
-			CONF_DATA0		:	 IN STD_LOGIC;
-			VGA_HS		:	 OUT STD_LOGIC;
-			VGA_VS		:	 OUT STD_LOGIC;
-			VGA_R		:	 OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
-			VGA_G		:	 OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
-			VGA_B		:	 OUT STD_LOGIC_VECTOR(5 DOWNTO 0);
-			AUDIO_L  : out std_logic;
-			AUDIO_R  : out std_logic
-		);
-	END COMPONENT;
 	
 	signal buttons : std_logic_vector(7 downto 0);
 	signal vol_up : std_logic;
@@ -501,6 +469,14 @@ begin
 --		end if;
 --	end process;
 
+	-- Widen the SPI ack pulse		
+	process(clk_100,spi_raw_ack,spi_raw_ack_d)
+	begin
+		if rising_edge(clk_100) then
+			spi_raw_ack_d <= spi_raw_ack;
+		end if;
+		spi_ack <= spi_raw_ack or spi_raw_ack_d;
+	end process;
 
 	-- Pass internal signals to external SPI interface
 	spi_clk <= spi_clk_int;
@@ -527,6 +503,7 @@ begin
 		spi_ss3 => spi_ss3,
 		spi_ss4 => spi_ss4,
 		conf_data0 => conf_data0,
+		spi_ack => spi_ack,
 		
 		-- PS/2 signals
 		ps2k_clk_in => ps2_keyboard_clk_in,

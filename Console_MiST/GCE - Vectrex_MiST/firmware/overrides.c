@@ -1,6 +1,6 @@
 #include "menu.h"
 #include "keyboard.h"
-#include "userio.h"
+#include "user_io.h"
 #include "spi.h"
 
 /* Key -> gamepad mapping.  We override this to swap buttons A and B for NES. */
