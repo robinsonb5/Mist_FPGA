@@ -2,6 +2,8 @@
 #include "keyboard.h"
 #include "user_io.h"
 #include "spi.h"
+#include "statusword.h"
+#include "config.h"
 
 /* Key -> gamepad mapping.  We override this to swap buttons A and B for NES. */
 
@@ -30,10 +32,12 @@ unsigned char joy_keymap[]=
 int analoguesensitivity=0x80;
 int analogue[4];
 
+int Menu_JoystickToAnalogue(int a,int joy, int sensitivity);
+
 void Menu_Joystick(int port,int joymap)
 {
 	int buttons=HW_JOY(REG_JOY_EXTRA);
-	int *a=&analogue[2*port];
+	int *a=&analogue[0];
 	if(TestKey(KEY_F1) || (buttons&0x2))
 		analoguesensitivity=0x80;
 	if(TestKey(KEY_F2) || (buttons&0x4))
@@ -43,15 +47,14 @@ void Menu_Joystick(int port,int joymap)
 	if(TestKey(KEY_F4) || (buttons&0x10))
 		analoguesensitivity=0x08;
 	user_io_digital_joystick_ext(port, joymap);
-	Menu_JoystickToAnalogue(a,joymap);
-	Menu_JoystickToAnalogue(a+1,joymap>>2);
+	analogue[2*port+0]=Menu_JoystickToAnalogue(analogue[2*port+0],joymap,analoguesensitivity);
+	analogue[2*port+1]=Menu_JoystickToAnalogue(analogue[2*port+1],joymap>>2,analoguesensitivity);
 	user_io_analogue_joystick(port,a);
 }
 
-__weak int rom_minsize=8192;
+__weak int rom_minsize;
 
 /* Initial ROM */
-const char *bootrom_name="AUTOBOOTVEC";
 
 extern unsigned char romtype;
 
@@ -59,26 +62,26 @@ char *autoboot()
 {
 	int i;
 	romtype=0;
+	rom_minsize=8192;
+	statusword|=1;
+	sendstatus();
 
-	SPI(0xff);
-	SPI_ENABLE(HW_SPI_CONF);
-	SPI(UIO_SET_STATUS2); // Put the core in reset
-	SPI(1);
-	SPI_DISABLE(HW_SPI_CONF);
+	i=LoadROM(ROM_FILENAME);
 
-	i=LoadROM("VECTREX BIN");
-
-	SPI(0xff);
-	SPI_ENABLE(HW_SPI_CONF);
-	SPI(UIO_SET_STATUS2); // Release the reset
-	SPI(0);
-	SPI_DISABLE(HW_SPI_CONF);
+	statusword&=~1;
+	sendstatus();
 
 	if(!i)
 		return("VECTREX.BIN not found!");
 
+	statusword|=1;
+	sendstatus();
+
+	rom_minsize=1;
 	romtype=1;
-	i=LoadROM(bootrom_name);
+	i=LoadROM("AUTOBOOTVEC");
+	statusword&=~1;
+	sendstatus();
 
 	return(0);
 }

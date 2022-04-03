@@ -87,9 +87,13 @@ pll pll (
 assign SDRAM_CLK = clk_24;
 assign SDRAM_CKE = 1;
 
+wire [14:0] download_addr;
+assign download_addr = !ioctl_index[0] ? {2'b11,ioctl_addr[12:0]} : ioctl_addr[14:0];
+
+
 reg         sdram_req;
-wire [24:1] sdram_a = ioctl_downl ? ioctl_addr[24:1] : cart_addr[14:1];
-wire  [1:0] sdram_ds = ioctl_downl ? {ioctl_addr[0], ~ioctl_addr[0]} : 2'b11;
+wire [24:1] sdram_a = ioctl_downl ? download_addr[14:1] : cart_addr[14:1];
+wire  [1:0] sdram_ds = ioctl_downl ? {download_addr[0], ~download_addr[0]} : 2'b11;
 wire [15:0] sdram_q;
 assign      cart_do = cart_addr[0] ? sdram_q[15:8] : sdram_q[7:0];
 

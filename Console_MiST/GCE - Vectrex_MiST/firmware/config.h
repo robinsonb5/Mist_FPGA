@@ -37,7 +37,7 @@ here, the number of units defaults to 4. */
 
 /* Do we require an autoboot ROM, and thus should we notify the user if it's not found? */
 #define ROM_REQUIRED
-#define ROM_FILENAME "BBC     ROM"
+#define ROM_FILENAME "VECTREX BIN"
 
 /* Do we support settings files */
 /* For the BBC core the settings file will contain the CMOS RAM */
