@@ -37,7 +37,7 @@ module Pacman_MiST(
 	input         CLOCK_27
 );
 
-`include "rtl\build_id.v"
+`include "build_id.v"
 
 localparam CONF_STR = {
 	"PACMAN;;",
@@ -213,7 +213,7 @@ wire [7:0] in0xor = mod_ponp ? 8'hE0 : 8'hFF;
 wire [7:0] in1xor = mod_ponp ? 8'h00 : 8'hFF;
 wire       m_cheat = m_fireC;
 
-pacman pacman(
+PACMAN pacman(
 	.mod_plus(mod_plus),
 	.mod_jmpst(mod_jmpst),
 	.mod_bird(mod_bird),
@@ -298,9 +298,7 @@ mist_video #(.COLOR_DEPTH(3),.SD_HCNT_WIDTH(10)) mist_video(
 	.no_csync(no_csync)
 	);
 
-dac #(
-	.C_bits(10))
-dac(
+dacwrap dac (
 	.clk_i(clk_sys),
 	.res_n_i(1),
 	.dac_i(audio),

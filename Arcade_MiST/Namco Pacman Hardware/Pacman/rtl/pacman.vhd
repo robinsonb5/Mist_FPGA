@@ -50,7 +50,6 @@ library ieee;
   use ieee.std_logic_unsigned.all;
   use ieee.numeric_std.all;
 
-library UNISIM;
 
 entity PACMAN is
 port
@@ -193,6 +192,19 @@ architecture RTL of PACMAN is
 	signal wav4u            : std_logic_vector(7 downto 0);
 	signal ay_we            : std_logic;
 
+	signal t80_reset : std_logic;
+	signal t80_int : std_logic;
+	signal t80_nmi : std_logic;
+	signal t80_clken : std_logic;
+	signal t80_wait : std_logic;
+
+	signal vid_mrtnt : std_logic;
+	signal vid_ponp : std_logic;
+	signal snreset : std_logic;
+	signal we_i_rams : std_logic;
+	signal we_i_ram2 : std_logic;
+	signal ena_audio : std_logic;
+
 begin
 
 --
@@ -291,14 +303,21 @@ begin
 	end if;
 end process;
 
-u_cpu : work.T80sed
+
+t80_reset <= watchdog_reset_l and (not reset);
+t80_int <= cpu_int_l or mod_van;
+t80_nmi <= cpu_int_l or not mod_van;
+t80_clken <= hcnt(0) and ena_6;
+t80_wait <= sync_bus_wreq_l and (not pause);
+
+u_cpu : entity work.T80sed
 port map (
-	RESET_n => watchdog_reset_l and (not reset),
+	RESET_n => t80_reset,
 	CLK_n   => clk,
-	CLKEN   => hcnt(0) and ena_6,
-	WAIT_n  => sync_bus_wreq_l and (not pause),
-	INT_n   => cpu_int_l or     mod_van,
-	NMI_n   => cpu_int_l or not mod_van,
+	CLKEN   => t80_clken,
+	WAIT_n  => t80_wait,
+	INT_n   => t80_int,
+	NMI_n   => t80_nmi,
 	BUSRQ_n => '1',
 	M1_n    => cpu_m1_l,
 	MREQ_n  => cpu_mreq_l,
@@ -344,7 +363,7 @@ end process;
 --
 -- vram addr custom ic
 --
-u_vram_addr : work.PACMAN_VRAM_ADDR
+u_vram_addr : entity work.PACMAN_VRAM_ADDR
 port map (
 	AB      => vram_addr_ab,
 	H256_L  => hcnt(8),
@@ -524,12 +543,15 @@ cpu_data_in <= cpu_vec_reg               when cpu_iorq_l = '0' and cpu_m1_l = '0
                x"BF"                     when iodec_nop_l   = '0'   else
                ram_data;
 
-u_rams : work.dpram generic map (12,8)
+
+we_i_rams <= not sync_bus_r_w_l and not vram_l and ena_6;
+
+u_rams : entity work.dpram generic map (12,8)
 port map
 (
 	clk_a_i   => clk,
 	en_a_i    => ena_6,
-	we_i      => not sync_bus_r_w_l and not vram_l and ena_6,
+	we_i      => we_i_rams,
 	addr_a_i  => ab(11 downto 0),
 	data_a_i  => cpu_data_out, -- cpu only source of ram data
 	clk_b_i   => clk,
@@ -540,12 +562,14 @@ port map
 ram2_we <= '1' when cpu_wr_l = '0' and cpu_mreq_l = '0' and cpu_rfsh_l = '1' else '0';
 ram2_cs <= '1' when cpu_addr(15 downto 12) = X"9" and mod_alib = '1' else '0';
 
-u_ram2 : work.dpram generic map (10,8)
+we_i_ram2 <= ram2_we and ram2_cs;
+
+u_ram2 : entity work.dpram generic map (10,8)
 port map
 (
 	clk_a_i   => clk,
 	en_a_i    => ena_6,
-	we_i      => ram2_we and ram2_cs,
+	we_i      => we_i_ram2,
 	addr_a_i  => cpu_addr(9 downto 0),
 	data_a_i  => cpu_data_out,
 	clk_b_i   => clk,
@@ -574,7 +598,7 @@ begin
 	end if;
 end process;
 
-u_program_rom: work.rom_descrambler
+u_program_rom: entity work.rom_descrambler
 port map(
 	CLK      => clk,
 	MRTNT    => mod_mrtnt,
@@ -595,7 +619,11 @@ port map(
 --
 -- video subsystem
 --
-u_video : work.PACMAN_VIDEO
+
+vid_mrtnt <= mod_mrtnt or mod_woodp;
+vid_ponp <= mod_ponp and not mod_van;
+
+u_video : entity work.PACMAN_VIDEO
 port map (
 	I_HCNT    => hcnt,
 	I_VCNT    => vcnt,
@@ -616,8 +644,8 @@ port map (
 	O_GREEN   => O_VIDEO_G,
 	O_BLUE    => O_VIDEO_B,
 	--
-	MRTNT     => mod_mrtnt or mod_woodp,
-	PONP      => mod_ponp and not mod_van,
+	MRTNT     => vid_mrtnt,
+	PONP      => vid_ponp,
 	ENA_6     => ena_6,
 	CLK       => clk,
 	flip_screen => flip_screen
@@ -631,7 +659,10 @@ O_VBLANK  <= vblank;
 --
 -- audio subsystem
 --
-u_audio : work.PACMAN_AUDIO
+
+ena_audio <= ena_6 and (not pause);
+ 
+u_audio : entity work.PACMAN_AUDIO
 port map (
 	I_HCNT        => hcnt,
 	--
@@ -647,7 +678,7 @@ port map (
 	dn_wr         => dn_wr,
 	--
 	O_AUDIO       => wav4u,
-	ENA_6         => ena_6 and (not pause),
+	ENA_6         => ena_audio,
 	CLK           => clk
 );
 
@@ -681,6 +712,9 @@ process(clk, reset) begin
 	end if;
 end process;
 
+
+snreset <= not RESET;
+
 sn1 : entity work.sn76489_top
 generic map (
 	clock_div_16_g => 1
@@ -688,7 +722,7 @@ generic map (
 port map (
 	clock_i    => clk,
 	clock_en_i => ena_4,
-	res_n_i    => not RESET,
+	res_n_i    => snreset,
 	ce_n_i     => sn1_ce,
 	we_n_i     => sn1_ce,
 	ready_o    => sn1_ready,
@@ -696,14 +730,14 @@ port map (
 	aout_o     => wav1u
 );
 
-sn2 : work.sn76489_top
+sn2 : entity work.sn76489_top
 generic map (
 	clock_div_16_g => 1
 )
 port map (
 	clock_i    => clk,
 	clock_en_i => ena_4,
-	res_n_i    => not RESET,
+	res_n_i    => snreset,
 	ce_n_i     => sn2_ce,
 	we_n_i     => sn2_ce,
 	ready_o    => sn2_ready,
@@ -715,12 +749,12 @@ port map (
 
 ay_we <= '1' when cpu_wr_l = '0' and cpu_iorq_l = '0' and cpu_addr(7 downto 1) = "0000011" else '0';
 
-sn : work.YM2149
+sn : entity work.YM2149
 port map
 (
 	CLK       => clk,
 	ENA       => ENA_1M79,
-	RESET_L	  => not reset,
+	RESET_L	  => snreset,
 	I_BDIR    => ay_we,
 	I_BC1     => cpu_addr(0),
 	I_DA      => cpu_data_out,

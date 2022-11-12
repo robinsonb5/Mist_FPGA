@@ -28,7 +28,12 @@ module MCR3_MiST(
 	output        AUDIO_L,
 	output        AUDIO_R,
 	input         SPI_SCK,
+`ifdef DEMISTIFY
+	output        SPI_DO,
+	input         SPI_DO_IN,
+`else
 	inout         SPI_DO,
+`endif
 	input         SPI_DI,
 	input         SPI_SS2,
 	input         SPI_SS3,
@@ -167,16 +172,17 @@ always @(*) begin
 end
 
 assign LED = ~ioctl_downl;
-assign SDRAM_CLK = clk_mem;
+// assign SDRAM_CLK = clk_mem;
 assign SDRAM_CKE = 1;
 
 wire clk_sys, clk_mem;
 wire pll_locked;
-pll_mist pll(
+pll pll(
 	.inclk0(CLOCK_27),
 	.areset(0),
 	.c0(clk_sys),
 	.c1(clk_mem),
+	.c2(SDRAM_CLK),
 	.locked(pll_locked)
 	);
 
@@ -251,6 +257,9 @@ data_io #(.ROM_DIRECT_UPLOAD(1)) data_io(
 	.SPI_SS4       ( SPI_SS4      ),
 	.SPI_DI        ( SPI_DI       ),
 	.SPI_DO        ( SPI_DO       ),
+`ifdef DEMISTIFY
+	.SPI_DO_IN     ( SPI_DO_IN    ),
+`endif
 	.ioctl_download( ioctl_downl  ),
 	.ioctl_upload  ( ioctl_upl    ),
 	.ioctl_index   ( ioctl_index  ),

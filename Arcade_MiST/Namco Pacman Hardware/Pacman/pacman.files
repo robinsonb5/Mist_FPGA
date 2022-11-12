@@ -1,0 +1,14 @@
+rtl/dpram.vhd
+rtl/pacman_rom_descrambler.vhd
+rtl/pacman_vram_addr.vhd
+rtl/pacman_video.vhd
+rtl/pacman_audio.vhd
+../../../common/CPU/T80/T80.qip
+../../../common/mist/mist.qip
+../../../common/Sound/sn76489/sn76489.qip
+../../../common/Sound/ym2149/vol_table_array.vhd
+../../../common/Sound/ym2149/YM2149.vhd
+rtl/pacman.vhd
+rtl/dacwrap.vhd
+rtl/Pacman.sv
+

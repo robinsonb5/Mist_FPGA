@@ -201,7 +201,7 @@ begin
   --
   lfsr: process (clock_i, res_n_i)
 
-    function lfsr_tapped_f(lfsr : in std_logic_vector) return std_logic is
+    function lfsr_tapped_f(lfsr_i : in std_logic_vector) return std_logic is
       constant tapped_bits_c : std_logic_vector(0 to 14)
         -- tapped bits are 0, 2, 15
         := "110000000000000";
@@ -209,8 +209,8 @@ begin
     begin
       parity_v := '0';
 
-      for idx in lfsr'low to lfsr'high loop
-        parity_v := parity_v xor (lfsr(idx) and tapped_bits_c(idx));
+      for idx in lfsr_i'low to lfsr_i'high loop
+        parity_v := parity_v xor (lfsr_i(idx) and tapped_bits_c(idx));
       end loop;
 
       return parity_v;

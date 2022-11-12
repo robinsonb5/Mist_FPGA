@@ -661,7 +661,7 @@ begin
     end if;
   end process;
 
-  u_vol_table : work.vol_table
+  u_vol_table : entity work.vol_table
     port map (
       CLK         => clk,
       ADDR_A      => vol_table_in_l,

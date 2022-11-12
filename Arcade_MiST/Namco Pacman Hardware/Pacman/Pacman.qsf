@@ -159,6 +159,7 @@ set_global_assignment -name VHDL_FILE rtl/pacman_video.vhd
 set_global_assignment -name VHDL_FILE rtl/pacman_audio.vhd
 set_global_assignment -name VHDL_FILE rtl/dpram.vhd
 set_global_assignment -name QIP_FILE rtl/pll.qip
+set_global_assignment -name VHDL_FILE rtl/dacwrap.vhd
 set_global_assignment -name QIP_FILE ../../../common/CPU/T80/T80.qip
 set_global_assignment -name QIP_FILE ../../../common/mist/mist.qip
 set_global_assignment -name QIP_FILE ../../../common/Sound/sn76489/sn76489.qip

@@ -47,8 +47,6 @@ library ieee;
   use ieee.std_logic_unsigned.all;
   use ieee.numeric_std.all;
 
-library UNISIM;
-
 entity PACMAN_AUDIO is
   port (
     I_HCNT            : in    std_logic_vector(8 downto 0);
@@ -89,6 +87,9 @@ architecture RTL of PACMAN_AUDIO is
   signal prom_cs       : std_logic;
   signal rom1m_cs      : std_logic;
 
+  signal we_i_vol : std_logic;
+  signal we_i_rom : std_logic;
+
 begin
   p_sel_com : process(I_HCNT, I_AB, I_DB, accum_reg)
   begin
@@ -101,12 +102,14 @@ begin
     end if;
   end process;
 
-	vol_ram : work.dpram generic map (4,4)
+	we_i_vol <= not I_WR1_L;
+	
+	vol_ram : entity work.dpram generic map (4,4)
 	port map
 	(
 		clk_a_i   => CLK,
 		en_a_i    => ENA_6,
-		we_i      => not I_WR1_L,
+		we_i      => we_i_vol,
 		addr_a_i  => addr(3 downto 0),
 		data_a_i  => data,
 
@@ -115,7 +118,7 @@ begin
 		data_b_o  => vol_ram_dout
 	);
   
-	frq_ram : work.dpram generic map (4,4)
+	frq_ram : entity work.dpram generic map (4,4)
 	port map
 	(
 		clk_a_i   => CLK,
@@ -196,12 +199,14 @@ begin
   prom_cs <= '1' when dn_addr(15 downto 14) = "11" else '0';
   rom1m_cs <= '1' when dn_addr(9 downto 8) = "00" else '0';
 
-  audio_rom_1m : work.dpram generic map (8,8)
+  we_i_rom <= dn_wr and rom1m_cs and prom_cs;
+
+  audio_rom_1m : entity work.dpram generic map (8,8)
   port map
 	(
 		clk_a_i   => CLK,
 		en_a_i    => '1',
-		we_i      => dn_wr and rom1m_cs and prom_cs,
+		we_i      => we_i_rom,
 		addr_a_i  => dn_addr(7 downto 0),
 		data_a_i  => dn_data,
 	

@@ -49,6 +49,22 @@ localparam OSD_WIDTH_PADDED = OSD_WIDTH + (OSD_WIDTH >> 1);  // 25% padding left
 reg        osd_enable;
 (* ramstyle = "no_rw_check" *) reg  [7:0] osd_buffer[2047:0];  // the OSD buffer itself
 
+reg [10:0] osd_buffer_addr;
+reg [10:0] osd_waddr;
+reg [7:0] osd_d;
+reg [7:0] osd_byte;
+reg osd_we;
+
+always @(posedge SPI_SCK) begin
+	if(osd_we) begin
+		osd_buffer[osd_waddr]<=osd_d;
+	end
+end
+
+always @(posedge clk_sys) begin
+	osd_byte <= osd_buffer[osd_buffer_addr];
+end
+
 // the OSD has its own SPI interface to the io controller
 always@(posedge SPI_SCK, posedge SPI_SS3) begin
 	reg  [4:0] cnt;
@@ -76,9 +92,13 @@ always@(posedge SPI_SCK, posedge SPI_SS3) begin
 			if(sbuf[6:3] == 4'b0100) osd_enable <= SPI_DI;
 		end
 
+		osd_we<=1'b0;
 		// command 0x20: OSDCMDWRITE
 		if((cmd[7:3] == 5'b00100) && (cnt == 15)) begin
-			osd_buffer[bcnt] <= {sbuf[6:0], SPI_DI};
+			osd_waddr<=bcnt;
+			osd_we<=1'b1;
+			osd_d<={sbuf[6:0], SPI_DI};
+//			osd_buffer[bcnt] <= {sbuf[6:0], SPI_DI};
 			bcnt <= bcnt + 1'd1;
 		end
 	end
@@ -103,29 +123,31 @@ wire [10:0] dsp_height = (vs_pol & !USE_BLANKS) ? vs_low : vs_high;
 wire doublescan = (dsp_height>350);
 
 reg auto_ce_pix;
+
+reg [15:0] cecnt = 0;
+reg  [2:0] cepixsz;
+reg  [2:0] cepixcnt;
+reg        cehs;
+
 always @(posedge clk_sys) begin
-	reg [15:0] cnt = 0;
-	reg  [2:0] pixsz;
-	reg  [2:0] pixcnt;
-	reg        hs;
 
-	cnt <= cnt + 1'd1;
-	hs <= HSync;
+	cecnt <= cecnt + 1'd1;
+	cehs <= HSync;
 
-	pixcnt <= pixcnt + 1'd1;
-	if(pixcnt == pixsz) pixcnt <= 0;
-	auto_ce_pix <= !pixcnt;
+	cepixcnt <= cepixcnt + 1'd1;
+	if(cepixcnt == cepixsz) cepixcnt <= 0;
+	auto_ce_pix <= !cepixcnt;
 
-	if(hs && ~HSync) begin
-		cnt <= 0;
-		if(cnt <= OSD_WIDTH_PADDED * 2) pixsz <= 0;
-		else if(cnt <= OSD_WIDTH_PADDED * 3) pixsz <= 1;
-		else if(cnt <= OSD_WIDTH_PADDED * 4) pixsz <= 2;
-		else if(cnt <= OSD_WIDTH_PADDED * 5) pixsz <= 3;
-		else if(cnt <= OSD_WIDTH_PADDED * 6) pixsz <= 4;
-		else pixsz <= 5;
+	if(cehs && ~HSync) begin
+		cecnt <= 0;
+		if(cecnt <= OSD_WIDTH_PADDED * 2) cepixsz <= 0;
+		else if(cecnt <= OSD_WIDTH_PADDED * 3) cepixsz <= 1;
+		else if(cecnt <= OSD_WIDTH_PADDED * 4) cepixsz <= 2;
+		else if(cecnt <= OSD_WIDTH_PADDED * 5) cepixsz <= 3;
+		else if(cecnt <= OSD_WIDTH_PADDED * 6) cepixsz <= 4;
+		else cepixsz <= 5;
 
-		pixcnt <= 0;
+		cepixcnt <= 0;
 		auto_ce_pix <= 1;
 	end
 end
@@ -206,8 +228,6 @@ wire [10:0] osd_vcnt    = v_cnt - v_osd_start;
 wire [10:0] osd_hcnt_next  = osd_hcnt + 2'd1;  // one pixel offset for osd byte address register
 reg         osd_de;
 
-reg [10:0] osd_buffer_addr;
-wire [7:0] osd_byte = osd_buffer[osd_buffer_addr];
 reg        osd_pixel;
 
 always @(posedge clk_sys) begin

@@ -160,16 +160,16 @@ end T80_MCode;
 architecture rtl of T80_MCode is
 
 	function is_cc_true(
-		F : std_logic_vector(7 downto 0);
+		FF : std_logic_vector(7 downto 0);
 		cc : bit_vector(2 downto 0)
 		) return boolean is
 	begin
 		if Mode = 3 then
 			case cc is
-			when "000" => return F(Flag_Z) = '0'; -- NZ
-			when "001" => return F(Flag_Z) = '1'; -- Z
-			when "010" => return F(Flag_C) = '0'; -- NC
-			when "011" => return F(Flag_C) = '1'; -- C
+			when "000" => return FF(Flag_Z) = '0'; -- NZ
+			when "001" => return FF(Flag_Z) = '1'; -- Z
+			when "010" => return FF(Flag_C) = '0'; -- NC
+			when "011" => return FF(Flag_C) = '1'; -- C
 			when "100" => return false;
 			when "101" => return false;
 			when "110" => return false;
@@ -177,14 +177,14 @@ architecture rtl of T80_MCode is
 			end case;
 		else
 			case cc is
-			when "000" => return F(Flag_Z) = '0'; -- NZ
-			when "001" => return F(Flag_Z) = '1'; -- Z
-			when "010" => return F(Flag_C) = '0'; -- NC
-			when "011" => return F(Flag_C) = '1'; -- C
-			when "100" => return F(Flag_P) = '0'; -- PO
-			when "101" => return F(Flag_P) = '1'; -- PE
-			when "110" => return F(Flag_S) = '0'; -- P
-			when "111" => return F(Flag_S) = '1'; -- M
+			when "000" => return FF(Flag_Z) = '0'; -- NZ
+			when "001" => return FF(Flag_Z) = '1'; -- Z
+			when "010" => return FF(Flag_C) = '0'; -- NC
+			when "011" => return FF(Flag_C) = '1'; -- C
+			when "100" => return FF(Flag_P) = '0'; -- PO
+			when "101" => return FF(Flag_P) = '1'; -- PE
+			when "110" => return FF(Flag_S) = '0'; -- P
+			when "111" => return FF(Flag_S) = '1'; -- M
 			end case;
 		end if;
 	end;

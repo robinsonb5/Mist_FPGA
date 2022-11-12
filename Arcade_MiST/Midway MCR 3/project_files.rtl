@@ -1,0 +1,8 @@
+mcr3.qip
+../../DeMiSTify/controller/controller.qip
+firmware/controller_rom1_byte.vhd
+firmware/controller_rom2_byte.vhd
+
+demistify_config_pkg.vhd
+
+rtl/build_id.tcl

@@ -276,17 +276,22 @@ architecture rtl of rom_descrambler is
 	signal r3               : std_logic_vector(7 downto 0);
 	signal mtd_addr         : std_logic_vector(4 downto 0);
 	signal method           : std_logic_vector(3 downto 0);
+	
+	signal we_i_0 : std_logic;
+	signal we_i_1 : std_logic;
+	
 begin
 
 	rom0_cs <= '1' when dn_addr(15 downto 14) = "00" else '0';
 	rom1_cs <= '1' when dn_addr(15 downto 14) = "01" else '0';
 
-	u_program_rom0 : work.dpram generic map (14,8)
+	we_i_0 <= dn_wr and rom0_cs;
+	u_program_rom0 : entity work.dpram generic map (14,8)
 	port map
 	(
 		clk_a_i   => clk,
 		en_a_i    => '1',
-		we_i      => dn_wr and rom0_cs,
+		we_i      => we_i_0,
 		addr_a_i  => dn_addr(13 downto 0),
 		data_a_i  => dn_data,
 	
@@ -295,12 +300,13 @@ begin
 		data_b_o  => rom_lo
    );
 
-	u_program_rom1 : work.dpram generic map (14,8)
+	we_i_1 <= dn_wr and rom1_cs;
+	u_program_rom1 : entity work.dpram generic map (14,8)
 	port map
 	(
 		clk_a_i   => clk,
 		en_a_i    => '1',
-		we_i      => dn_wr and rom1_cs,
+		we_i      => we_i_1,
 		addr_a_i  => dn_addr(13 downto 0),
 		data_a_i  => dn_data,
 	

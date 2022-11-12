@@ -47,8 +47,6 @@ library ieee;
 	use ieee.std_logic_unsigned.all;
 	use ieee.numeric_std.all;
 
-library UNISIM;
-
 entity PACMAN_VIDEO is
 port (
 	I_HCNT            : in    std_logic_vector(8 downto 0);
@@ -132,6 +130,11 @@ architecture RTL of PACMAN_VIDEO is
 	signal rom7_cs            : std_logic;
 	signal rom4a_cs           : std_logic;
 
+	signal wr_sprite_xy : std_logic;
+	signal we_i_char : std_logic;
+	signal we_i_col : std_logic;
+	signal we_i_col2 : std_logic;
+
 begin
 
 	prom_cs <= '1' when dn_addr(15 downto 14) = "11" else '0';
@@ -145,12 +148,14 @@ begin
 	-- we can simplify this
 	dr <= xy when I_HBLANK = '1' else "11111111"; -- pull ups on board
 
-	sprite_xy_ram : work.dpram generic map (4,8)
+	wr_sprite_xy <= not I_WR2_L;
+
+	sprite_xy_ram : entity work.dpram generic map (4,8)
 	port map
 	(
 		clk_a_i   => CLK,
 		en_a_i    => ENA_6,
-		we_i      => not I_WR2_L,
+		we_i      => wr_sprite_xy,
 		addr_a_i  => I_AB(3 downto 0),
 		data_a_i  => I_DB,
 
@@ -245,13 +250,15 @@ begin
 	-- descramble ROMs for Mr TNT (swap data lines D4 and D6)
 	char_rom_5ef_dout <= char_rom_5ef_buf(7) & char_rom_5ef_buf(4) & char_rom_5ef_buf(5) & char_rom_5ef_buf(6) & char_rom_5ef_buf(3 downto 0) when MRTNT = '1' else char_rom_5ef_buf;
 
+	we_i_char <= dn_wr and gfx_cs;
+
 	-- char roms
-	char_rom_5ef : work.dpram generic map (13,8)
+	char_rom_5ef : entity work.dpram generic map (13,8)
 	port map
 	(
 		clk_a_i   => clk,
 		en_a_i    => '1',
-		we_i      => dn_wr and gfx_cs,
+		we_i      => we_i_char,
 		addr_a_i  => dn_addr(12 downto 0),
 		data_a_i  => dn_data,
 
@@ -315,12 +322,14 @@ begin
 
 	rom4a_cs <= '1' when dn_addr(9 downto 8) = "01" else '0';
 
-	col_rom_4a : work.dpram generic map (8,8)
+	we_i_col <= dn_wr and rom4a_cs and prom_cs;
+
+	col_rom_4a : entity work.dpram generic map (8,8)
 	port map
 	(
 		clk_a_i   => CLK,
 		en_a_i    => '1',
-		we_i      => dn_wr and rom4a_cs and prom_cs,
+		we_i      => we_i_col,
 		addr_a_i  => dn_addr(7 downto 0),
 		data_a_i  => dn_data,
 
@@ -346,7 +355,7 @@ begin
 		end if;
 	end process;
 
-	u_sprite_ram : work.dpram generic map (8,6)
+	u_sprite_ram : entity work.dpram generic map (8,6)
 	port map
 	(
 		clk_a_i   => CLK,
@@ -414,12 +423,14 @@ begin
 	-- assign video outputs from color LUT PROM
 	rom7_cs <= '1' when dn_addr(9 downto 4) = "110000" else '0';
 
-	col_rom_7f : work.dpram generic map (4,8)
+	we_i_col2 <= dn_wr and rom7_cs and prom_cs;
+	
+	col_rom_7f : entity work.dpram generic map (4,8)
 	port map
 	(
 		clk_a_i   => CLK,
 		en_a_i    => '1',
-		we_i      => dn_wr and rom7_cs and prom_cs,
+		we_i      => we_i_col2,
 		addr_a_i  => dn_addr(3 downto 0),
 		data_a_i  => dn_data,
 

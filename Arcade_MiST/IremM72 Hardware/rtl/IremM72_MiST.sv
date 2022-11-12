@@ -10,6 +10,9 @@ module IremM72_MiST(
 	output        AUDIO_L,
 	output        AUDIO_R,
 	input         SPI_SCK,
+`ifdef DEMISTIFY
+	input         SPI_DO_IN,
+`endif
 	inout         SPI_DO,
 	input         SPI_DI,
 	input         SPI_SS2,
@@ -79,7 +82,7 @@ reg         oneplayer = 0;
 wire [15:0] dip_sw = status[31:16];
 
 assign LED = ~ioctl_downl;
-assign SDRAM_CLK = CLK_96M;
+//assign SDRAM_CLK = CLK_96M;
 assign SDRAM_CKE = 1; 
 
 wire CLK_96M, CLK_32M;
@@ -88,6 +91,7 @@ pll_mist pll(
 	.inclk0(CLOCK_27),
 	.c0(CLK_96M),
 	.c1(CLK_32M),
+	.c2(SDRAM_CLK),
 	.locked(pll_locked)
 	);
 
@@ -140,6 +144,9 @@ data_io #(.ROM_DIRECT_UPLOAD(1'b1)) data_io(
 	.SPI_SS4       ( SPI_SS4      ),
 	.SPI_DI        ( SPI_DI       ),
 	.SPI_DO        ( SPI_DO       ),
+`ifdef DEMISTIFY
+	.SPI_DO_IN     ( SPI_DO_IN    ),
+`endif
 	.clkref_n      ( 1'b0         ),
 	.ioctl_download( ioctl_downl  ),
 	.ioctl_index   ( ioctl_index  ),
@@ -221,7 +228,7 @@ sdram_4w #(96) sdram
   .port1_we      ( sdr_rom_write ),
   .port1_ds      ( sdr_rom_be    ),
   .port1_d       ( sdr_rom_data  ),
-  .port1_q       ( sdr_rom_ack   ),
+  .port1_q       ( ),// sdr_rom_ack   ),
 
   // Main CPU
   .cpu1_rom_addr ( ),
@@ -255,11 +262,11 @@ sdram_4w #(96) sdram
   // Bank 2-3 ops
   .port2_a       ( sdr_rom_addr[24:1] ),
   .port2_req     ( sdr_rom_req     ),
-  .port2_ack     ( sdr_rom_ack     ),
+  .port2_ack     ( ), // sdr_rom_ack     ),
   .port2_we      ( sdr_rom_write   ),
   .port2_ds      ( sdr_rom_be      ),
   .port2_d       ( sdr_rom_data    ),
-  .port2_q       ( sdr_rom_ack     ),
+  .port2_q       ( ),// sdr_rom_ack     ),
 
   .gfx1_req      ( sdr_bg_req_a    ),
   .gfx1_ack      ( sdr_bg_ack_a    ),
@@ -281,7 +288,7 @@ sdram_4w #(96) sdram
   .sp_ack        ( sdr_sprite_ack  ),
   .sp_q          ( sdr_sprite_dout )
 );
- 
+
 rom_loader rom_loader(
     .sys_clk(CLK_32M),
 
