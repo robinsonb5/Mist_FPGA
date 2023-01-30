@@ -26,6 +26,17 @@ constant demistify_button2 : integer := 5;
 constant demistify_button3 : integer := 6;
 constant demistify_button4 : integer := 7;
 
+-- Arcade coin and start buttons
+constant demistify_start1 : integer := 4;
+constant demistify_start2 : integer := 5;
+constant demistify_start3 : integer := 6;
+constant demistify_start4 : integer := 7;
+
+constant demistify_coin1 : integer := 8;
+constant demistify_coin2 : integer := 9;
+constant demistify_coin3 : integer := 10;
+constant demistify_coin4 : integer := 11;
+
 constant demistify_serialdebug : std_logic := '0';
 
 

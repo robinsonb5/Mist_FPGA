@@ -47,7 +47,7 @@ here, the number of units defaults to 4. */
 #undef ROM_REQUIRED
 
 /* ROM name will default to "BOOT    ROM" if not defined here... */ 
-#undef ROM_FILENAME "CORE    ROM"
+#define ROM_FILENAME "PUCKMA~1ARC"
 
 /* Do we support settings files */
 

@@ -242,7 +242,7 @@ sd_clk <= spi_clk_int;
 controller : entity work.substitute_mcu
 	generic map (
 		sysclk_frequency => 500,
-		debug => true,
+		debug => false,
 		jtag_uart => false
 	)
 	port map (
@@ -272,7 +272,7 @@ controller : entity work.substitute_mcu
 		ps2m_clk_out => ps2_mouse_clk_out,
 		ps2m_dat_out => ps2_mouse_dat_out,
 
-		buttons => (0=>KEY(1),others=>'1'),
+		buttons => (demistify_coin1=>KEY(1),others=>'1'),
 
 		-- UART
 		rxd => rs232_rxd,
