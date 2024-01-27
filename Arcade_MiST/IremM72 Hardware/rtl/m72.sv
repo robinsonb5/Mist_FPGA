@@ -20,7 +20,10 @@
 
 import m72_pkg::*;
 
-module m72 (
+// If WITH_MCU is set to 0 the MCU will be omitted to reduce the core size -
+// but then some games won't run.
+
+module m72 #(parameter WITH_MCU=1) (
     input CLK_32M,
     input CLK_96M,
 
@@ -609,6 +612,8 @@ wire mcu_ram_int;
 wire mcu_ram_cs;
 wire [7:0] mcu_sample_out;
 
+// FIXME - can we get away with disabling this when the MCU's disabled?
+
 dualport_mailbox_2kx16 mcu_shared_ram(
     .reset(~reset_n),
     .clk_l(CLK_32M),
@@ -631,6 +636,7 @@ dualport_mailbox_2kx16 mcu_shared_ram(
 wire [7:0] mculatch_data = board_cfg.main_mculatch ? cpu_io_out : snd_io_data;
 wire mculatch_en = board_cfg.main_mculatch ? ( IOWR && cpu_io_addr == 8'hc0 ) : ( snd_io_req && snd_io_addr == 8'h82 );
 
+`ifdef WITH_MCU
 mcu mcu(
     .CLK_32M(CLK_32M),
     .ce_8m(ce_mcu),
@@ -663,6 +669,7 @@ mcu mcu(
 
     .dbg_rom_addr(mcu_dbg_rom_addr)
 );
+`endif
 
 wire [1:0] z80_sample_addr_wr, mcu_sample_addr_wr;
 wire [7:0] z80_sample_addr, mcu_sample_addr;

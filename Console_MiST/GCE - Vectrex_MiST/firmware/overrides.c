@@ -5,6 +5,8 @@
 #include "statusword.h"
 #include "config.h"
 
+int LoadROM(const char *fn);
+
 /* Key -> gamepad mapping.  We override this to swap buttons A and B for NES. */
 
 unsigned char joy_keymap[]=
@@ -32,7 +34,7 @@ unsigned char joy_keymap[]=
 int analoguesensitivity=0x80;
 int analogue[4];
 
-int Menu_JoystickToAnalogue(int a,int joy, int sensitivity);
+int Menu_JoystickToAnalogue(int *a,int joy, int sensitivity);
 
 void Menu_Joystick(int port,int joymap)
 {
@@ -47,12 +49,11 @@ void Menu_Joystick(int port,int joymap)
 	if(TestKey(KEY_F4) || (buttons&0x10))
 		analoguesensitivity=0x08;
 	user_io_digital_joystick_ext(port, joymap);
-	analogue[2*port+0]=Menu_JoystickToAnalogue(analogue[2*port+0],joymap,analoguesensitivity);
-	analogue[2*port+1]=Menu_JoystickToAnalogue(analogue[2*port+1],joymap>>2,analoguesensitivity);
+	Menu_JoystickToAnalogue(&analogue[2*port+0],joymap,analoguesensitivity);
+	Menu_JoystickToAnalogue(&analogue[2*port+1],joymap>>2,analoguesensitivity);
 	user_io_analogue_joystick(port,a);
 }
 
-__weak int rom_minsize;
 
 /* Initial ROM */
 
@@ -62,7 +63,6 @@ char *autoboot()
 {
 	int i;
 	romtype=0;
-	rom_minsize=8192;
 	statusword|=1;
 	sendstatus();
 
@@ -77,7 +77,6 @@ char *autoboot()
 	statusword|=1;
 	sendstatus();
 
-	rom_minsize=1;
 	romtype=1;
 	i=LoadROM("AUTOBOOTVEC");
 	statusword&=~1;
