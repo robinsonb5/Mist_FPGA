@@ -1,0 +1,9 @@
+disable_direct.v
+IremM62.qip
+../../DeMiSTify/controller/controller.qip
+firmware/controller_rom1.rom
+firmware/controller_rom2.rom
+
+demistify_config_pkg.vhd
+
+rtl/build_id.tcl

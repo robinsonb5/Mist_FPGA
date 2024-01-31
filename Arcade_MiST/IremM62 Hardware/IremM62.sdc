@@ -51,13 +51,12 @@ set_time_format -unit ns -decimal_places 3
 # Create Clock
 #**************************************************************
 
-create_clock -name {SPI_SCK}  -period 41.666 -waveform { 20.8 41.666 } [get_ports {SPI_SCK}]
-
-set sdram_clk "pll|altpll_component|auto_generated|pll1|clk[0]"
-set vid_clk   "pll|altpll_component|auto_generated|pll1|clk[2]"
-set game_clk  "pll|altpll_component|auto_generated|pll1|clk[1]"
-set aud_clk   "pll_aud|altpll_component|auto_generated|pll1|clk[0]"
-set dac_clk   "pll_aud|altpll_component|auto_generated|pll1|clk[1]"
+set sys_clk   "${topmodule}pll|altpll_component|auto_generated|pll1|clk[0]"
+set sdram_clk "${topmodule}pll|altpll_component|auto_generated|pll1|clk[3]"
+set vid_clk   "${topmodule}pll|altpll_component|auto_generated|pll1|clk[2]"
+set game_clk  "${topmodule}pll|altpll_component|auto_generated|pll1|clk[1]"
+set aud_clk   "${topmodule}pll_aud|altpll_component|auto_generated|pll1|clk[0]"
+set dac_clk   "${topmodule}pll_aud|altpll_component|auto_generated|pll1|clk[1]"
 
 #**************************************************************
 # Create Generated Clock
@@ -78,35 +77,22 @@ set dac_clk   "pll_aud|altpll_component|auto_generated|pll1|clk[1]"
 # Set Input Delay
 #**************************************************************
 
-set_input_delay -add_delay  -clock_fall -clock [get_clocks {CLOCK_27}]  1.000 [get_ports {CLOCK_27}]
-set_input_delay -add_delay  -clock_fall -clock [get_clocks {SPI_SCK}]  1.000 [get_ports {CONF_DATA0}]
-set_input_delay -add_delay  -clock_fall -clock [get_clocks {SPI_SCK}]  1.000 [get_ports {SPI_DI}]
-set_input_delay -add_delay  -clock_fall -clock [get_clocks {SPI_SCK}]  1.000 [get_ports {SPI_SCK}]
-set_input_delay -add_delay  -clock_fall -clock [get_clocks {SPI_SCK}]  1.000 [get_ports {SPI_SS2}]
-set_input_delay -add_delay  -clock_fall -clock [get_clocks {SPI_SCK}]  1.000 [get_ports {SPI_SS3}]
-
-set_input_delay -clock [get_clocks $sdram_clk] -reference_pin [get_ports {SDRAM_CLK}] -max 6.4 [get_ports SDRAM_DQ[*]]
-set_input_delay -clock [get_clocks $sdram_clk] -reference_pin [get_ports {SDRAM_CLK}] -min 3.2 [get_ports SDRAM_DQ[*]]
+set_input_delay -clock [get_clocks $sdram_clk] -reference_pin [get_ports $RAM_CLK] -max 6.4 [get_ports $RAM_IN]
+set_input_delay -clock [get_clocks $sdram_clk] -reference_pin [get_ports $RAM_CLK] -min 3.2 [get_ports $RAM_IN]
 
 #**************************************************************
 # Set Output Delay
 #**************************************************************
 
-set_output_delay -add_delay   -clock [get_clocks {SPI_SCK}] 1.000 [get_ports {SPI_DO}]
-set_output_delay -add_delay   -clock [get_clocks $dac_clk]  1.000 [get_ports {AUDIO_L}]
-set_output_delay -add_delay   -clock [get_clocks $dac_clk]  1.000 [get_ports {AUDIO_R}]
-set_output_delay -add_delay   -clock [get_clocks $game_clk] 1.000 [get_ports {LED}]
-set_output_delay -add_delay   -clock [get_clocks $vid_clk]  1.000 [get_ports {VGA_*}]
-
-set_output_delay -clock [get_clocks $sdram_clk] -reference_pin [get_ports {SDRAM_CLK}] -max 1.5 [get_ports {SDRAM_D* SDRAM_A* SDRAM_BA* SDRAM_n* SDRAM_CKE}]
-set_output_delay -clock [get_clocks $sdram_clk] -reference_pin [get_ports {SDRAM_CLK}] -min -0.8 [get_ports {SDRAM_D* SDRAM_A* SDRAM_BA* SDRAM_n* SDRAM_CKE}]
+set_output_delay -clock [get_clocks $sdram_clk] -reference_pin [get_ports $RAM_CLK] -max 1.5 [get_ports $RAM_OUT]
+set_output_delay -clock [get_clocks $sdram_clk] -reference_pin [get_ports $RAM_CLK] -min -0.8 [get_ports $RAM_OUT]
 
 #**************************************************************
 # Set Clock Groups
 #**************************************************************
 
-set_clock_groups -asynchronous -group [get_clocks {SPI_SCK}] -group [get_clocks {pll|altpll_component|auto_generated|pll1|clk[*]}]
-set_clock_groups -asynchronous -group [get_clocks {SPI_SCK}] -group [get_clocks {pll_aud|altpll_component|auto_generated|pll1|clk[*]}]
+set_clock_groups -asynchronous -group [get_clocks spiclk] -group [get_clocks ${topmodule}pll|altpll_component|auto_generated|pll1|clk[*]]
+set_clock_groups -asynchronous -group [get_clocks spiclk] -group [get_clocks ${topmodule}pll_aud|altpll_component|auto_generated|pll1|clk[*]]
 set_clock_groups -asynchronous -group [get_clocks $sdram_clk] -group [get_clocks $aud_clk]
 set_clock_groups -asynchronous -group [get_clocks $game_clk] -group [get_clocks $aud_clk]
 
@@ -114,14 +100,15 @@ set_clock_groups -asynchronous -group [get_clocks $game_clk] -group [get_clocks 
 # Set False Path
 #**************************************************************
 
-
+set_false_path -to ${FALSE_OUT}
+set_false_path -from ${FALSE_IN}
+set_false_path -to ${VGA_OUT}
 
 #**************************************************************
 # Set Multicycle Path
 #**************************************************************
 
-set_multicycle_path -to {VGA_*[*]} -setup 3
-set_multicycle_path -to {VGA_*[*]} -hold 2
+set_multicycle_path -from [get_clocks $sdram_clk] -to [get_clocks $sys_clk] -setup 2
 
 #**************************************************************
 # Set Maximum Delay

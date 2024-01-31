@@ -29,7 +29,7 @@ module IremM62_MiST(
 	output        SDRAM_CKE
 );
 
-`include "rtl/build_id.v" 
+`include "build_id.v" 
 
 `define CORE_NAME "LDRUN"
 wire [6:0] core_mod;
@@ -70,7 +70,7 @@ always @(*) begin
 end
 
 assign LED = ~ioctl_downl;
-assign SDRAM_CLK = clk_sd;
+//assign SDRAM_CLK = clk_sd;
 assign SDRAM_CKE = 1; 
 
 wire clk_sys, clk_vid, clk_sd, clk_aud, clk_dac;
@@ -81,6 +81,7 @@ pll_mist pll(
 	.c0(clk_sd),
 	.c1(clk_sys),
 	.c2(clk_vid),
+	.c3(SDRAM_CLK),
 	.locked(pll_locked)
 	);
 
@@ -104,7 +105,11 @@ wire        key_strobe;
 
 user_io #(
 	.STRLEN(($size(CONF_STR)>>3)),
+`ifdef DEMISTIFY_NO_DIRECT	
+	.ROM_DIRECT_UPLOAD(1'b0))
+`else
 	.ROM_DIRECT_UPLOAD(1'b1))
+`endif
 user_io(
 	.clk_sys        (clk_sys        ),
 	.conf_str       (CONF_STR       ),
@@ -160,7 +165,11 @@ wire        ioctl_wr;
 wire [24:0] ioctl_addr;
 wire  [7:0] ioctl_dout;
 
+`ifdef DEMISTIFY_NO_DIRECT	
+data_io #(.ROM_DIRECT_UPLOAD(1'b0)) data_io(
+`else
 data_io #(.ROM_DIRECT_UPLOAD(1'b1)) data_io(
+`endif
 	.clk_sys       ( clk_sys      ),
 	.SPI_SCK       ( SPI_SCK      ),
 	.SPI_SS2       ( SPI_SS2      ),
@@ -324,7 +333,11 @@ mist_video #(.COLOR_DEPTH(4), .SD_HCNT_WIDTH(11)) mist_video(
 	.scandoubler_disable( scandoublerD ),
 	.scanlines      ( scanlines        ),
 	.blend          ( blend            ),
+`ifdef NO_YPBPR
+	.ypbpr          ( 1'b0             ),
+`else
 	.ypbpr          ( ypbpr            ),
+`endif
 	.no_csync       ( no_csync         )
 	);
 
