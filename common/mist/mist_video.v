@@ -17,7 +17,7 @@ module mist_video
 
 	// non-scandoubled pixel clock divider:
 	// 0 - clk_sys/4, 1 - clk_sys/2, 2 - clk_sys/3, 3 - clk_sys/4, etc
-	input  [2:0] ce_divider,
+	input  [3:0] ce_divider,
 
 	// 0 = HVSync 31KHz, 1 = CSync 15KHz
 	input        scandoubler_disable,
@@ -27,6 +27,7 @@ module mist_video
 	input        ypbpr,
 	// Rotate OSD [0] - rotate [1] - left or right
 	input  [1:0] rotate,
+	input  [1:0] rotatescreen,
 	// composite-like blending
 	input        blend,
 
@@ -45,7 +46,23 @@ module mist_video
 	output reg [5:0] VGA_G,
 	output reg [5:0] VGA_B,
 	output reg       VGA_VS,
-	output reg       VGA_HS
+	output reg       VGA_HS,
+	
+	// Memory interface - to RAM (for rotation).  Operates on 16-word bursts
+	output wire         vidin_req,    // High at start of row, remains high until burst of 16 pixels has been delivered
+	output wire         vidin_frame,  // Odd or even frame for double-buffering
+	output wire [9:0]   vidin_row,    // Y position of current row.
+	output wire [9:0]   vidin_col,    // X position of current burst.
+	output wire [15:0]  vidin_d,      // Incoming video data
+	input wire          vidin_ack,    // Request next word from host
+	
+	// Memory interface - from RAM (for rotation).  Operates on 8-word bursts
+	output wire         vidout_req,   // High at start of row, remains high until entire row has been delivered
+	output wire         vidout_frame, // Odd or even frame for double-buffering
+	output wire [9:0]   vidout_row,   // Y position of current row.  (Controller maintains X counter)
+	output wire [9:0]   vidout_col,   // Y position of current row.  (Controller maintains X counter)
+	input wire [15:0]   vidout_d,     // Outgoing video data
+	input wire          vidout_ack    // Valid data available.
 );
 
 parameter OSD_COLOR    = 3'd4;
@@ -73,6 +90,7 @@ scandoubler #(SD_HCNT_WIDTH, COLOR_DEPTH) scandoubler
 	.bypass     ( scandoubler_disable ),
 	.ce_divider ( ce_divider ),
 	.scanlines  ( scanlines  ),
+	.rotation   ( rotatescreen),
 	.pixel_ena  ( pixel_ena  ),
 	.hb_in      ( HBlank     ),
 	.vb_in      ( VBlank     ),
@@ -87,7 +105,20 @@ scandoubler #(SD_HCNT_WIDTH, COLOR_DEPTH) scandoubler
 	.vs_out     ( SD_VS_O    ),
 	.r_out      ( SD_R_O     ),
 	.g_out      ( SD_G_O     ),
-	.b_out      ( SD_B_O     )
+	.b_out      ( SD_B_O     ),
+	.vidin_req  ( vidin_req),
+	.vidin_d    ( vidin_d),
+	.vidin_ack  ( vidin_ack),
+	.vidin_frame( vidin_frame),
+	.vidin_row  ( vidin_row),
+	.vidin_col  ( vidin_col),
+
+	.vidout_req ( vidout_req),
+	.vidout_d   ( vidout_d),
+	.vidout_ack ( vidout_ack),
+	.vidout_frame( vidout_frame),
+	.vidout_row ( vidout_row),
+	.vidout_col ( vidout_col)
 );
 
 wire [5:0] osd_r_o;

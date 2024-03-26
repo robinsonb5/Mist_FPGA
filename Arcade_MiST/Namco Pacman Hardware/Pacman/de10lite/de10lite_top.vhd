@@ -183,17 +183,6 @@ VGA_HS<=vga_hsync;
 VGA_VS<=vga_vsync;
 
 
--- Not using SDRAM, so set safe defaults:
-
-DRAM_DQ <= (others => 'Z');
-DRAM_CS_N <= '1';
-DRAM_RAS_N <= '1';
-DRAM_CAS_N <= '1';
-DRAM_CLK <= '1';
-DRAM_CKE <= '0';
-
--- Generate clocks
-
 guest: COMPONENT Pacman_MiST
 	PORT map
 	(
@@ -201,17 +190,17 @@ guest: COMPONENT Pacman_MiST
 		CLOCK_27 => MAX10_CLK2_50,
 --		RESET_N => reset_n,
 		-- clocks
---		SDRAM_DQ => DRAM_DQ,
---		SDRAM_A => DRAM_ADDR,
---		SDRAM_DQML => DRAM_LDQM,
---		SDRAM_DQMH => DRAM_UDQM,
---		SDRAM_nWE => DRAM_WE_N,
---		SDRAM_nCAS => DRAM_CAS_N,
---		SDRAM_nRAS => DRAM_RAS_N,
---		SDRAM_nCS => DRAM_CS_N,
---		SDRAM_BA => DRAM_BA,
---		SDRAM_CLK => DRAM_CLK,
---		SDRAM_CKE => DRAM_CKE,
+		SDRAM_DQ => DRAM_DQ,
+		SDRAM_A => DRAM_ADDR,
+		SDRAM_DQML => DRAM_LDQM,
+		SDRAM_DQMH => DRAM_UDQM,
+		SDRAM_nWE => DRAM_WE_N,
+		SDRAM_nCAS => DRAM_CAS_N,
+		SDRAM_nRAS => DRAM_RAS_N,
+		SDRAM_nCS => DRAM_CS_N,
+		SDRAM_BA => DRAM_BA,
+		SDRAM_CLK => DRAM_CLK,
+		SDRAM_CKE => DRAM_CKE,
 		
 --		SPI_DO_IN => sd_mosi,
 		SPI_DO => spi_fromguest,

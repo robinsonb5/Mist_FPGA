@@ -34,36 +34,53 @@ module Pacman_MiST(
 	input         SPI_SS2,
 	input         SPI_SS3,
 	input         CONF_DATA0,
-	input         CLOCK_27
+	input         CLOCK_27,
+	output [12:0] SDRAM_A,
+	inout  [15:0] SDRAM_DQ,
+	output        SDRAM_DQML,
+	output        SDRAM_DQMH,
+	output        SDRAM_nWE,
+	output        SDRAM_nCAS,
+	output        SDRAM_nRAS,
+	output        SDRAM_nCS,
+	output  [1:0] SDRAM_BA,
+	output        SDRAM_CLK,
+	output        SDRAM_CKE
 );
 
 `include "build_id.v"
 
 localparam CONF_STR = {
 	"PACMAN;;",
-	"O2,Rotate Controls,Off,On;",
+	"O56,Orientation,Vertical,Clockwise,Anticlockwise;",
+//	"O2,Rotate Controls,Off,On;",
 	"O34,Scanlines,Off,25%,50%,75%;",
-	"O5,Blend,Off,On;",
-	"O6,Flip,Off,On;",
+	"O2,Blend,Off,On;",
+//	"O6,Flip,Off,On;",
 	"DIP;",
 	"T0,Reset;",
 	"V,v1.20.",`BUILD_DATE
 };
 
-wire        rotate = status[2];
-wire  [1:0] scanlines = status[4:3];
-wire        blend = status[5];
+wire  [1:0] rotatescreen = |status[6:5] ? 2'b00 : 2'b01 ;
+wire        rotate = |status[6:5];
 wire        flip = status[6];
+wire  [1:0] scanlines = status[4:3];
+wire        blend = status[2];
 
 assign LED = ~ioctl_downl;
 assign AUDIO_R = AUDIO_L;
 
 wire clk_sys, clk_snd;
 wire pll_locked;
+wire clk_96;
+
 pll pll(
 	.inclk0(CLOCK_27),
 	.areset(0),
 	.c0(clk_sys),
+	.c1(clk_96),
+	.c2(SDRAM_CLK),
 	.locked(pll_locked)
 	);
 
@@ -162,7 +179,6 @@ user_io(
 wire  [9:0] audio;
 wire        hs, vs;
 wire        hb, vb;
-wire        blankn = ~(hb | vb);
 wire  [2:0] r,g;
 wire  [1:0] b;
 
@@ -274,14 +290,31 @@ PACMAN pacman(
 	.ENA_1M79(ce_1m79)
 	);
 
+	
+wire vidin_req;
+wire vidin_ack;
+wire [9:0] vidin_row;
+wire [9:0] vidin_col;
+wire [15:0] vidin_d;
+wire vidin_frame;
+
+wire vidout_req;
+wire vidout_ack;
+wire [9:0] vidout_row;
+wire [9:0] vidout_col;
+wire [15:0] vidout_d;
+wire vidout_frame;
+
 mist_video #(.COLOR_DEPTH(3),.SD_HCNT_WIDTH(10)) mist_video(
-	.clk_sys(clk_sys),
+	.clk_sys(clk_96),
 	.SPI_SCK(SPI_SCK),
 	.SPI_SS3(SPI_SS3),
 	.SPI_DI(SPI_DI),
-	.R(blankn ? r : 0),
-	.G(blankn ? g : 0),
-	.B(blankn ? {b, 1'b0} : 0),
+	.R(r),
+	.G(g),
+	.B({b, 1'b0}),
+	.HBlank(hb),
+	.VBlank(vb),
 	.HSync(~hs),
 	.VSync(~vs),
 	.VGA_R(VGA_R),
@@ -290,13 +323,66 @@ mist_video #(.COLOR_DEPTH(3),.SD_HCNT_WIDTH(10)) mist_video(
 	.VGA_VS(VGA_VS),
 	.VGA_HS(VGA_HS),
 	.rotate({~flip,rotate}),
+	.rotatescreen(rotatescreen),
 	.scandoubler_disable(scandoublerD),
 	.scanlines(scanlines),
-	.ce_divider(1'b1),
+	.ce_divider(4'hf),
 	.blend(blend),
 	.ypbpr(ypbpr),
-	.no_csync(no_csync)
+	.no_csync(no_csync),
+	.vidin_req(vidin_req),
+	.vidin_d(vidin_d),
+	.vidin_ack(vidin_ack),
+	.vidin_frame(vidin_frame),
+	.vidin_row(vidin_row),
+	.vidin_col(vidin_col),
+
+	.vidout_req(vidout_req),
+	.vidout_d(vidout_d),
+	.vidout_ack(vidout_ack),
+	.vidout_frame(vidout_frame),
+	.vidout_row(vidout_row),
+	.vidout_col(vidout_col)
 	);
+	
+wire sdram_ready;
+	
+assign SDRAM_CKE = pll_locked;
+	
+// SDRAM controller
+sdram sdram_ctrl (
+	.sd_data(SDRAM_DQ),   // 16 bit bidirectional data bus
+	.sd_addr(SDRAM_A),    // 13 bit multiplexed address bus
+	.sd_dqm({SDRAM_DQMH,SDRAM_DQML}), // two byte masks
+	.sd_ba(SDRAM_BA),   // two banks
+	.sd_cs(SDRAM_nCS),  // a single chip select
+	.sd_we(SDRAM_nWE),  // write enable
+	.sd_ras(SDRAM_nRAS), // row address select
+	.sd_cas(SDRAM_nCAS), // columns address select
+
+	.clk_96(clk_96),
+	.init(~pll_locked),
+	.ready(sdram_ready),
+
+	.port1_req(1'b0),
+	.port1_we(1'b0),
+	
+	.rom_oe(1'b0),
+	
+	.vidin_req(vidin_req),
+	.vidin_d(vidin_d),
+	.vidin_ack(vidin_ack),
+	.vidin_frame(vidin_frame),
+	.vidin_row(vidin_row),
+	.vidin_col(vidin_col),
+	
+	.vidout_req(vidout_req),
+	.vidout_row(vidout_row),
+	.vidout_col(vidout_col),
+	.vidout_frame(vidout_frame),
+	.vidout_q(vidout_d),
+	.vidout_ack(vidout_ack)	
+);
 
 dacwrap dac (
 	.clk_i(clk_sys),
@@ -317,8 +403,8 @@ arcade_inputs inputs (
 	.key_code    ( key_code    ),
 	.joystick_0  ( joystick_0  ),
 	.joystick_1  ( joystick_1  ),
-	.rotate      ( rotate      ),
-	.orientation ( {~flip, ~mod_ponp} ),
+	.rotate      ( rotate | scandoublerD ),
+	.orientation ( {~flip, (rotate | scandoublerD) & ~mod_ponp} ), // Screen rotation only works when the scandoubler is on
 	.joyswap     ( 1'b0        ),
 	.oneplayer   ( 1'b1        ),
 	.controls    ( {m_tilt, m_coin4, m_coin3, m_coin2, m_coin1, m_four_players, m_three_players, m_two_players, m_one_player} ),

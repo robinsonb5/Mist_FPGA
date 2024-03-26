@@ -399,11 +399,11 @@ rtc_cs<='0';
 
 	-- Not using SDRAM, so set safe defaults:
 
-	ram_data <= (others => 'Z');
-	ram_cas_n <= '1';
-	ram_ras_n <= '1';
-	ram_we_n <= '1';
-	ram_clk <= '1';
+--	ram_data <= (others => 'Z');
+--	ram_cas_n <= '1';
+--	ram_ras_n <= '1';
+--	ram_we_n <= '1';
+--	ram_clk <= '1';
 
 	guest: COMPONENT Pacman_MiST
 	PORT map
@@ -415,17 +415,17 @@ rtc_cs<='0';
 --		LED => led_red,
 	
 		-- SDRAM
---		SDRAM_DQ => ram_data,
---		SDRAM_A => ram_addr,
---		SDRAM_DQML => ram_ldqm,
---		SDRAM_DQMH => ram_udqm,
---		SDRAM_nWE => ram_we_n,
---		SDRAM_nCAS => ram_cas_n,
---		SDRAM_nRAS => ram_ras_n,
+		SDRAM_DQ => ram_data,
+		SDRAM_A => ram_addr,
+		SDRAM_DQML => ram_ldqm,
+		SDRAM_DQMH => ram_udqm,
+		SDRAM_nWE => ram_we_n,
+		SDRAM_nCAS => ram_cas_n,
+		SDRAM_nRAS => ram_ras_n,
 --		SDRAM_nCS => ram_cs_n,	-- Hardwired on TC64
---		SDRAM_BA(0) => ram_ba_0,
---		SDRAM_BA(1) => ram_ba_1,
---		SDRAM_CLK => ram_clk,
+		SDRAM_BA(0) => ram_ba_0,
+		SDRAM_BA(1) => ram_ba_1,
+		SDRAM_CLK => ram_clk,
 --		SDRAM_CKE => ram_cke, -- Hardwired on TC64
 
 		-- SPI interface to control module

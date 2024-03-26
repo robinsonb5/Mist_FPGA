@@ -47,17 +47,17 @@ constant demistify_serialdebug : std_logic := '0';
 		(
 			CLOCK_27 :	IN STD_LOGIC;	-- Comment out one of these two lines
 --			CLOCK_27 :	IN STD_LOGIC_VECTOR(1 downto 0);	-- to match the guest core
---			SDRAM_DQ		:	 INOUT STD_LOGIC_VECTOR(15 DOWNTO 0);
---			SDRAM_A		:	 OUT STD_LOGIC_VECTOR(12 DOWNTO 0);
---			SDRAM_DQML		:	 OUT STD_LOGIC;
---			SDRAM_DQMH		:	 OUT STD_LOGIC;
---			SDRAM_nWE		:	 OUT STD_LOGIC;
---			SDRAM_nCAS		:	 OUT STD_LOGIC;
---			SDRAM_nRAS		:	 OUT STD_LOGIC;
---			SDRAM_nCS		:	 OUT STD_LOGIC;
---			SDRAM_BA		:	 OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
---			SDRAM_CLK		:	 OUT STD_LOGIC;
---			SDRAM_CKE		:	 OUT STD_LOGIC;
+			SDRAM_DQ		:	 INOUT STD_LOGIC_VECTOR(15 DOWNTO 0);
+			SDRAM_A		:	 OUT STD_LOGIC_VECTOR(12 DOWNTO 0);
+			SDRAM_DQML		:	 OUT STD_LOGIC;
+			SDRAM_DQMH		:	 OUT STD_LOGIC;
+			SDRAM_nWE		:	 OUT STD_LOGIC;
+			SDRAM_nCAS		:	 OUT STD_LOGIC;
+			SDRAM_nRAS		:	 OUT STD_LOGIC;
+			SDRAM_nCS		:	 OUT STD_LOGIC;
+			SDRAM_BA		:	 OUT STD_LOGIC_VECTOR(1 DOWNTO 0);
+			SDRAM_CLK		:	 OUT STD_LOGIC;
+			SDRAM_CKE		:	 OUT STD_LOGIC;
 			SPI_DO		:	 OUT STD_LOGIC;
 	-- 		We can't do bi-directional signals here, so we need separate in and out signals.
 	--		If the guest core uses direct mode for ROM upload it will need to be adapted.

@@ -5,6 +5,7 @@ set_global_assignment -name VHDL_FILE [file join $::quartus(qip_path) rtl/pacman
 set_global_assignment -name VHDL_FILE [file join $::quartus(qip_path) rtl/pacman_video.vhd]
 set_global_assignment -name VHDL_FILE [file join $::quartus(qip_path) rtl/pacman_audio.vhd]
 set_global_assignment -name VHDL_FILE [file join $::quartus(qip_path) rtl/dpram.vhd]
+set_global_assignment -name VHDL_FILE [file join $::quartus(qip_path) rtl/dpram_logic.vhd]
 set_global_assignment -name VHDL_FILE [file join $::quartus(qip_path) rtl/dacwrap.vhd]
 set_global_assignment -name QIP_FILE [file join $::quartus(qip_path) ../../../common/CPU/T80/T80.qip]
 set_global_assignment -name QIP_FILE [file join $::quartus(qip_path) ../../../common/mist/mist.qip]

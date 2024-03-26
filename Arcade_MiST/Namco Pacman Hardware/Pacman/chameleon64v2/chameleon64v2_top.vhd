@@ -434,11 +434,11 @@ begin
 
 	-- Not using SDRAM, so set safe defaults:
 
-	ram_d <= (others => 'Z');
-	ram_cas <= '1';
-	ram_ras <= '1';
-	ram_we <= '1';
-	ram_clk <= '1';
+--	ram_d <= (others => 'Z');
+--	ram_cas <= '1';
+--	ram_ras <= '1';
+--	ram_we <= '1';
+--	ram_clk <= '1';
 
 	guest: COMPONENT Pacman_MiST
 	PORT map
@@ -448,16 +448,16 @@ begin
 --		RESET_N => reset_n,
 --		LED => led_red,
 		-- clocks
---		SDRAM_DQ => ram_d,
---		SDRAM_A => ram_a,
---		SDRAM_DQML => ram_ldqm,
---		SDRAM_DQMH => ram_udqm,
---		SDRAM_nWE => ram_we,
---		SDRAM_nCAS => ram_cas,
---		SDRAM_nRAS => ram_ras,
+		SDRAM_DQ => ram_d,
+		SDRAM_A => ram_a,
+		SDRAM_DQML => ram_ldqm,
+		SDRAM_DQMH => ram_udqm,
+		SDRAM_nWE => ram_we,
+		SDRAM_nCAS => ram_cas,
+		SDRAM_nRAS => ram_ras,
 --		SDRAM_nCS => ram_cs_n,
---		SDRAM_BA => ram_ba,
---		SDRAM_CLK => ram_clk,
+		SDRAM_BA => ram_ba,
+		SDRAM_CLK => ram_clk,
 --		SDRAM_CKE => ram_cke,
 		
 --		SPI_DO_IN => spi_miso,

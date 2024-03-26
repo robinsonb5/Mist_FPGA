@@ -1,0 +1,7 @@
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) sdram.v]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) scandoubler_linedouble.v]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) scandoubler_rotate.v]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) scandoubler_framing.v]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) scandoubler_scaledepth.v]
+set_global_assignment -name VERILOG_FILE [file join $::quartus(qip_path) scandoubler.v]
+

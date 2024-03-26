@@ -150,7 +150,7 @@ begin
 
 	wr_sprite_xy <= not I_WR2_L;
 
-	sprite_xy_ram : entity work.dpram generic map (4,8)
+	sprite_xy_ram : entity work.dpram_logic generic map (4,8)
 	port map
 	(
 		clk_a_i   => CLK,
@@ -425,7 +425,7 @@ begin
 
 	we_i_col2 <= dn_wr and rom7_cs and prom_cs;
 	
-	col_rom_7f : entity work.dpram generic map (4,8)
+	col_rom_7f : entity work.dpram_logic generic map (4,8)
 	port map
 	(
 		clk_a_i   => CLK,
