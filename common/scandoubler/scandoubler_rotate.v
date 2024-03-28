@@ -114,7 +114,7 @@ always @(posedge clk_sys) begin
 		in_ypos<=10'd0;
 	else if(!hb_in_d && hb_in)	begin // Increment row on hblank
 		in_ypos<=in_ypos+10'd1;
-		in_xpos_max <= in_xpos; // Round up to (next multiple of 8)-1
+		in_xpos_max <= in_xpos;
 	end
 end
 
@@ -125,7 +125,8 @@ always @(posedge clk_sys) begin
 		in_xpos<=in_xpos+10'd1;	// Increment column on pixel enable
 end
 
-// Buffer incoming video data and write to SDRAM.  (16 word bursts, striped across two banks, SDRAM controller handles )
+// Buffer incoming video data and write to SDRAM.
+// (16 word bursts, striped across two banks, SDRAM controller handles the actual cornerturn)
 
 reg [15:0] rowbuf[0:31] /* synthesis ramstyle="logic" */;
 reg [4:0] rowwptr;
@@ -133,8 +134,6 @@ reg [4:0] rowrptr;
 reg running=1'b0;
 
 wire [3:0] escape,start;
-assign start = rotation[0] ? 4'b0000 : 4'b1111;
-assign escape = rotation[0] ? 4'b1111 : 4'b0000;
 
 always @(posedge clk_sys) begin
 
@@ -144,13 +143,14 @@ always @(posedge clk_sys) begin
 		rowwptr<=5'h0;
 	end
 
-	// Don't update row during hblank (gives buffer time to empty)
+	// Don't update row during hblank (gives linebuffer time to empty)
 	if(!hb_in) begin
 		if(rotation[0])
 			vidin_row<=in_ypos_max-in_ypos;
 		else
 			vidin_row<=in_ypos;
 	end
+
 	// Write incoming pixels to a line buffer
 	if(running && pe_in && !vb_in && !hb_in) begin
 		rowbuf[rowwptr]<=vin_rgb565;
@@ -160,21 +160,23 @@ always @(posedge clk_sys) begin
 			else
 				vidin_col<=in_xpos_max - in_xpos;	// Low 4 bits will be overriden
 			vidin_req<=1'b1;
-			rowrptr<={rowwptr[4],start};
+			rowrptr<={rowwptr[4],4'b0000};
 		end
 		rowwptr<=rowwptr+1'b1;
 	end
 
 	// Write pixels from linebuffer to SDRAM
 	vidin_d <= rowbuf[rowrptr];
-	vidin_col[3:0] <= rowrptr[3:0];
+	if(rotation[0])	// Invert x coordinate if rotating anticlockwise
+		vidin_col[3:0] <= rowrptr[3:0];
+	else
+		vidin_col[3:0] <= ~rowrptr[3:0];
+
+	// Terminate burst after 16 pixels
 	if(vidin_ack) begin
-		if(rowrptr[3:0]==escape)
+		if(rowrptr[3:0]==4'b1111)
 			vidin_req<=1'b0;
-		if(rotation[0])
-			rowrptr<=rowrptr+1'b1;
-		else
-			rowrptr<=rowrptr-1'b1;
+		rowrptr<=rowrptr+1'b1;
 	end
 end
 
@@ -246,7 +248,7 @@ reg [15:0] vout_rgb565;
 always @(posedge clk_sys) begin
 	if(hb_sd) begin
 		sd_xpos<=10'd0;
-		sd_xacc<=10'd0;
+		sd_xacc<=11'd0;
 		sd_xoffset<=in_xpos_max-in_ypos_max;
 	end
 

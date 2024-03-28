@@ -208,8 +208,6 @@ always @(posedge clk_96) begin
 				vidwrite<=1'b1;
 				vidwrite_bank<=vidin_col[3];
 				sd_ba <= {1'b1,vidin_col[3]};
-				// row(9 downto 0) <= x(9 downto 4) & not y(9 downto 6); // 9 bits 
-				// row(12 downto 10) <= (others => '1');
 				sd_addr <= {2'b11,vidin_frame,vidin_col[9:4],vidin_row[9:6]};
 //				$display("vidwrite (%t) bank %d, row %h", $time, {1'b1,vidin_col[3]}, {2'b11,vidin_frame,vidin_col[9:4],~vidin_row[9:6]});
 				sd_cmd <= CMD_ACTIVE;
@@ -218,8 +216,6 @@ always @(posedge clk_96) begin
 				vidread<=1'b1;
 				// ba(0) <= x(3); // Stripe adjacent pixel blocks across banks
 				sd_ba <= {1'b1,vidout_row[3]};
-				// row(9 downto 0) <= x(9 downto 4) & not y(9 downto 6); // 9 bits 
-				// row(12 downto 10) <= (others => '1');
 				sd_addr <= {2'b11,vidout_frame,vidout_row[9:4],vidout_col[9:6]};
 				sd_cmd <= CMD_ACTIVE;
 //				$display("vidread  (%t) read bank %d, row %h", $time, {1'b1,vidout_row[3]}, {2'b11,vidout_frame,vidout_row[9:4],~vidout_col[9:6]});
@@ -271,8 +267,6 @@ always @(posedge clk_96) begin
 				// Open row on second bank
 				sd_ba <= {1'b1,~vidwrite_bank};
 				sd_cmd <= CMD_ACTIVE;
-				// row(9 downto 0) <= x(9 downto 4) & not y(9 downto 6); // 9 bits 
-				// row(12 downto 10) <= (others => '1');
 				sd_addr <= {2'b11,vidwrite_frame,vidin_col[9:4],vidin_row[9:6]};
 //				$display("vidwrite (%t) bank %d, row %h", $time, 2'b11, {2'b11,vidin_frame,vidin_col[9:4],~vidin_row[9:6]});
 			end
@@ -291,8 +285,6 @@ always @(posedge clk_96) begin
 				sd_data_reg <= vidin_d;
 				drive_dq <= 1'b1;
 
-				// col(5 downto 0) <= not y(5 downto 0); // 8 words, so 64 rotated pixels per RAM row  
-				// col(8 downto 6) <= x(2 downto 0); // 8 words, so 16 pixels per bank.row
 				sd_addr[12:11] <= 2'b00;
 				sd_addr[10] <= 1'b0;
 				if((t==STATE_CMD_CONT+8) || (t==STATE_CMD_CONT+16))
