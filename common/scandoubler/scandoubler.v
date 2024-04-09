@@ -41,6 +41,8 @@ module scandoubler
 	input      [1:0] scanlines,
 
 	input      [1:0] rotation, // 0 - no rotation, 1 - anticlockwise, 2 - clockwise
+	input            hfilter,
+	input            vfilter,
 
 	// shifter video interface
 	input            hb_in,
@@ -77,7 +79,7 @@ module scandoubler
 	input wire          vidout_ack    // Valid data available.
 );
 
-parameter HCNT_WIDTH = 9; // Resolution of scandoubler buffer
+parameter HCNT_WIDTH = 10; // Resolution of scandoubler buffer
 parameter COLOR_DEPTH = 6; // Bits per colour to be stored in the buffer
 parameter HSCNT_WIDTH = 12; // Resolution of hsync counters
 parameter OUT_COLOR_DEPTH = 6; // Bits per color outputted
@@ -167,6 +169,8 @@ scandoubler_rotate #(
 	.clk_sys(clk_sys),
 	.bypass(bypass),
 	.rotation(rotation),
+	.hfilter(hfilter),
+	.vfilter(vfilter),
 	
 	.pe_in(pe_in),
 	.pe_out(pe_out),

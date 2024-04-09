@@ -53,7 +53,7 @@ module scandoubler_framing
 	
 );
 
-parameter HCNT_WIDTH = 9; // Resolution of scandoubler buffer
+parameter HCNT_WIDTH = 10; // Resolution of scandoubler buffer
 parameter HSCNT_WIDTH = 12; // Resolution of hsync counters
 
 // use alternating sd_buffers when storing/reading data   

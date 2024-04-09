@@ -32,6 +32,8 @@ module scandoubler_rotate
 
 	input        bypass,
 	input [1:0]  rotation, // 0 - no rotation, 1 - clockwise, 2 - anticlockwise
+	input        hfilter,
+	input        vfilter,
 
 	// Pixelclock
 	input            pe_in,
@@ -85,34 +87,41 @@ scandoubler_scaledepth #(.IN_DEPTH(COLOR_DEPTH),.OUT_DEPTH(6)) scalein_g (.d(g_i
 scandoubler_scaledepth #(.IN_DEPTH(COLOR_DEPTH),.OUT_DEPTH(5)) scalein_b (.d(b_in),.q(vin_rgb565[4:0]));
 
 
-
 // Stream incoming pixels to SDRAM, taking care of inverting either X or Y coordinates.
 // The SDRAM controller does the actual cornerturn.
 
-
 // Framing
 reg [HCNT_WIDTH-1:0] in_xpos;
-reg [HCNT_WIDTH-1:0] in_ypos;
-reg [HCNT_WIDTH-1:0] in_xpos_max;
-reg [HCNT_WIDTH-1:0] in_ypos_max;
+reg [HCNT_WIDTH-1:0] in_ypos=239;
+reg [HCNT_WIDTH-1:0] in_xpos_max = 320;
+reg [HCNT_WIDTH-1:0] in_ypos_max = 238;
 reg hb_in_d;
 
 // Toggle logical / physical frame every vblank
 reg logicalframe = 1'b0;
 reg vb_d = 1'b1;
+reg vb_stb = 1'b0;
+reg hb_stb = 1'b0;
+
 always @(posedge clk_sys) begin
+	vb_stb<=1'b0;
+
 	vb_d<=vb_in;
 	if(!vb_d && vb_in) begin
+		vb_stb<=1'b1;
 		logicalframe<=~logicalframe;
 		in_ypos_max<=in_ypos-1'b1;
 	end
 end
 
 always @(posedge clk_sys) begin
+	hb_stb<=1'b0;
+
 	hb_in_d<=hb_in;
 	if(vb_in)
 		in_ypos<=10'd0;
 	else if(!hb_in_d && hb_in)	begin // Increment row on hblank
+		hb_stb<=1'b1;
 		in_ypos<=in_ypos+10'd1;
 		in_xpos_max <= in_xpos;
 	end
@@ -186,49 +195,79 @@ assign vidin_frame = logicalframe;
 // Pixel read process - streams data from SDRAM to linebuffers.
 
 reg [15:0] linebuffer1 [0:2**HCNT_WIDTH-1];
-// reg [15:0] linebuffer2 [0:2**HCNT_WIDTH-1];
+reg [15:0] linebuffer2 [0:2**HCNT_WIDTH-1];
 
 reg fetch;
 
 reg [HCNT_WIDTH-1:0] fetch_xpos;
-reg [HCNT_WIDTH-1:0] sd_ypos;
-reg [HCNT_WIDTH:0] sd_yacc;
+wire [HCNT_WIDTH-1:0] sd_ypos;
 
 reg hb_sd_d;
 reg vs_sd_d;
 
+reg hb_sd_stb;
+reg vs_sd_stb;
+
+
+localparam vi_fracwidth=16;
+
+wire [HCNT_WIDTH-1:0] vi_whole; // Row number
+wire [hi_fracwidth-1:0] vi_fraction; // Blend factor
+wire vi_step; // Move onto the next line
+wire vi_ready;
+wire vi_blank;
+
+frac_interp #(.bitwidth(HCNT_WIDTH),.fracwidth(vi_fracwidth),.centre(0)) interp_core_v (
+	.clk(clk_sys),
+	.reset_n(1'b1),
+	.num({in_ypos_max[HCNT_WIDTH-2:0],1'b0}),
+	.den(in_xpos_max),
+	.limit(in_xpos_max),
+	.newfraction(vs_sd_stb),
+	.ready(vi_ready),
+	.step_reset(vs_sd_stb),
+	.step_in(hb_sd_stb),
+	.step_out(vi_step),
+	.whole(vi_whole),
+	.fraction(vi_fraction),
+	.blank(vi_blank)
+);
+
+assign sd_ypos = vi_whole;
+reg fetchbuffer;
+
 always @(posedge clk_sys) begin
+	hb_sd_stb<=1'b0;
+	vs_sd_stb<=1'b0;
 	hb_sd_d<=hb_sd;
 	vs_sd_d<=vs_sd;
-	if(vb_sd) begin
-		sd_ypos<=10'd0;
-		sd_yacc<=11'd0;
-	end else if(!hb_sd_d && hb_sd) begin // Increment row on hblank
-		sd_yacc<=sd_yacc+in_xpos_max;
+
+	if(!vb_sd && !hb_sd_d && hb_sd) begin // Increment row on hblank
+		hb_sd_stb<=1'b1;
 	end
-	
-	if (sd_yacc>{in_ypos_max,1'b0}) begin
-		fetch_xpos<=10'd0;
-		sd_ypos<=sd_ypos+10'd1;
+
+	if (vi_step) begin
+		fetch_xpos <= 10'b0;
 		fetch<=sd_ypos == (in_xpos_max-1'b1) ? 1'b0 : 1'b1; // Stop fetching if rounding causes us to reach the foot of the screen a row or two early.
-		sd_yacc<=sd_yacc-{in_ypos_max,1'b0};
+		fetchbuffer<=fetchbuffer ^ vfilter;
 	end
 
 	if(!vs_sd_d && vs_sd) begin
-		fetch_xpos <= 10'd0;
+		vs_sd_stb<=1'b1;
+		fetch_xpos <= 10'b0;	// Pre-fetch the first row.
 		fetch<=1'b1;
+		fetchbuffer<=1'b0;
 	end
 
-	if(fetch_xpos==in_ypos_max) begin
+	if(fetch && fetch_xpos==in_ypos_max)
 		fetch<=1'b0;
-	end
 	
 	if(vidout_ack) begin
 		fetch_xpos<=fetch_xpos+10'd1;
-//		if(sd_ypos[0])
+		if(fetchbuffer)
 			linebuffer1[fetch_xpos]<=vidout_d;
-//		else
-//			linebuffer2[fetch_xpos]<=vidout_d;
+		else
+			linebuffer2[fetch_xpos]<=vidout_d;
 	end
 	
 end
@@ -239,42 +278,99 @@ assign vidout_col = fetch_xpos;
 assign vidout_frame = ~logicalframe;
 assign vidout_req = fetch;
 
-reg [HCNT_WIDTH-1:0] sd_xpos;
-reg [HCNT_WIDTH:0] sd_xacc;
-reg [HCNT_WIDTH-1:0] sd_xoffset;
 
-reg [15:0] vout_rgb565;
+// Basic horizontal interpolation
+
+localparam hi_fracwidth=16;
+
+wire [HCNT_WIDTH-1:0] hi_whole; // Index into pixel buffer
+wire [hi_fracwidth-1:0] hi_fraction; // Blend factor
+wire hi_step; // Move onto the next pixel
+wire hi_ready;
+wire hi_blank;
+
+frac_interp #(.bitwidth(HCNT_WIDTH),.fracwidth(hi_fracwidth),.centre(1)) interp_core_h (
+	.clk(clk_sys),
+	.reset_n(1'b1),
+	.num({in_ypos_max[HCNT_WIDTH-2:0],1'b0}),
+	.den(in_xpos_max),
+	.limit(in_ypos_max),
+	.newfraction(vs_sd_stb),
+	.ready(hi_ready),
+	.step_reset(hb_sd_stb),
+	.step_in(!hb_sd && ppe_out),
+	.step_out(hi_step),
+	.whole(hi_whole),
+	.fraction(hi_fraction),
+	.blank(hi_blank)
+);
+
+// Interpolate pixels 
+
+reg [15:0] row1_pix1;
+reg [15:0] row2_pix1;
+reg [15:0] row1_pix2;
+reg [15:0] row2_pix2;
+wire [15:0] col_pix1;
+wire [15:0] col_pix2;
+wire [15:0] final_rgb565;
+
+reg [2:0] hi_blank_d;
 
 always @(posedge clk_sys) begin
-	if(hb_sd) begin
-		sd_xpos<=10'd0;
-		sd_xacc<=11'd0;
-		sd_xoffset<=in_xpos_max-in_ypos_max;
+	hi_blank_d<= {hi_blank_d[1:0],hi_blank};
+
+	if(fetchbuffer) begin
+		row1_pix1<=linebuffer1[hi_whole];
+		row2_pix1<=linebuffer2[hi_whole];
+	end else begin
+		row2_pix1<=linebuffer1[hi_whole];
+		row1_pix1<=linebuffer2[hi_whole];
 	end
 
-	if(sd_xacc>{in_ypos_max,1'b0}) begin
-		sd_xacc<=sd_xacc-{in_ypos_max,1'b0};
-		if(|sd_xoffset)
-			sd_xoffset<=sd_xoffset-1'b1;
-		else
-			sd_xpos<=sd_xpos+1'b1;
+	if(hi_step) begin
+		row1_pix2<=row1_pix1;
+		row2_pix2<=row2_pix1;
 	end
-
-	if(!hb_sd && ppe_out)
-		sd_xacc<=sd_xacc+in_xpos_max;
-
-	if((sd_xpos==in_ypos_max) && ppe_out)
-		sd_xoffset<=10'h3ff;
-
-//	if(sd_ypos[0])
-		vout_rgb565<=|sd_xoffset ? 16'h0 : linebuffer1[sd_xpos];
-//	else
-//		vout_rgb565<=|sd_xoffset ? 16'h0 : linebuffer2[sd_xpos];
 end
 
-scandoubler_scaledepth #(.IN_DEPTH(5),.OUT_DEPTH(OUT_COLOR_DEPTH)) scaleout_r (.d(vout_rgb565[15:11]),.q(r_out));
-scandoubler_scaledepth #(.IN_DEPTH(6),.OUT_DEPTH(OUT_COLOR_DEPTH)) scaleout_g (.d(vout_rgb565[10:5]),.q(g_out));
-scandoubler_scaledepth #(.IN_DEPTH(5),.OUT_DEPTH(OUT_COLOR_DEPTH)) scaleout_b (.d(vout_rgb565[4:0]),.q(b_out));
+wire [7:0] hfilter_fraction = hfilter ? hi_fraction[15:8] : 8'h00;
+wire [7:0] vfilter_fraction = vfilter ? vi_fraction[15:8] : 8'h00;
+
+scandoubler_rgb_interp rgbinterp_h1
+(
+	.clk_sys(clk_sys),
+	.blank(hi_blank_d[2]),
+	.fraction(hfilter_fraction),
+	.rgb_in(row1_pix1),
+	.rgb_in_prev(row1_pix2),
+	.rgb_out(col_pix1)
+);
+
+scandoubler_rgb_interp rgbinterp_h2
+(
+	.clk_sys(clk_sys),
+	.blank(hi_blank_d[2]),
+	.fraction(hfilter_fraction),
+	.rgb_in(row2_pix1),
+	.rgb_in_prev(row2_pix2),
+	.rgb_out(col_pix2)
+);
+
+scandoubler_rgb_interp rgbinterp_v
+(
+	.clk_sys(clk_sys),
+	.blank(vi_blank),
+	.fraction(vfilter_fraction),
+	.rgb_in(col_pix1),
+	.rgb_in_prev(col_pix2),
+	.rgb_out(final_rgb565)
+);
+
+
+scandoubler_scaledepth #(.IN_DEPTH(5),.OUT_DEPTH(OUT_COLOR_DEPTH)) scaleout_r (.d(final_rgb565[15:11]),.q(r_out));
+scandoubler_scaledepth #(.IN_DEPTH(6),.OUT_DEPTH(OUT_COLOR_DEPTH)) scaleout_g (.d(final_rgb565[10:5]),.q(g_out));
+scandoubler_scaledepth #(.IN_DEPTH(5),.OUT_DEPTH(OUT_COLOR_DEPTH)) scaleout_b (.d(final_rgb565[4:0]),.q(b_out));
 
 endmodule
 

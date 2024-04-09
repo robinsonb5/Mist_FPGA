@@ -91,6 +91,8 @@ scandoubler #(SD_HCNT_WIDTH, COLOR_DEPTH) scandoubler
 	.ce_divider ( ce_divider ),
 	.scanlines  ( scanlines  ),
 	.rotation   ( rotatescreen),
+	.hfilter    (1'b1),
+	.vfilter    (1'b1),
 	.pixel_ena  ( pixel_ena  ),
 	.hb_in      ( HBlank     ),
 	.vb_in      ( VBlank     ),
