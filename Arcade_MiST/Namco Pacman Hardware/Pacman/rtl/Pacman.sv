@@ -52,7 +52,8 @@ module Pacman_MiST(
 
 localparam CONF_STR = {
 	"PACMAN;;",
-	"O56,Orientation,Vertical,Clockwise,Anticlockwise;",
+	"O56,Orientation,Vertical,Anticlockwise,Clockwise;",
+	"O1,Rotation filter,Off,On;",
 //	"O2,Rotate Controls,Off,On;",
 	"O34,Scanlines,Off,25%,50%,75%;",
 	"O2,Blend,Off,On;",
@@ -64,6 +65,7 @@ localparam CONF_STR = {
 
 wire  [1:0] rotatescreen = |status[6:5] ? 2'b00 : 2'b01 ;
 wire        rotate = |status[6:5];
+wire        rotate_filter = status[1];
 wire        flip = status[6];
 wire  [1:0] scanlines = status[4:3];
 wire        blend = status[2];
@@ -324,6 +326,8 @@ mist_video #(.COLOR_DEPTH(3),.SD_HCNT_WIDTH(10)) mist_video(
 	.VGA_HS(VGA_HS),
 	.rotate({~flip,rotate}),
 	.rotatescreen(rotatescreen),
+	.rotate_hfilter(rotate_filter),
+	.rotate_vfilter(rotate_filter),	
 	.scandoubler_disable(scandoublerD),
 	.scanlines(scanlines),
 	.ce_divider(4'hf),

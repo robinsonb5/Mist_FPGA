@@ -28,6 +28,8 @@ module mist_video
 	// Rotate OSD [0] - rotate [1] - left or right
 	input  [1:0] rotate,
 	input  [1:0] rotatescreen,
+	input        rotate_hfilter,
+	input        rotate_vfilter,
 	// composite-like blending
 	input        blend,
 
@@ -91,8 +93,8 @@ scandoubler #(SD_HCNT_WIDTH, COLOR_DEPTH) scandoubler
 	.ce_divider ( ce_divider ),
 	.scanlines  ( scanlines  ),
 	.rotation   ( rotatescreen),
-	.hfilter    (1'b1),
-	.vfilter    (1'b1),
+	.hfilter    ( rotate_hfilter),
+	.vfilter    ( rotate_vfilter),
 	.pixel_ena  ( pixel_ena  ),
 	.hb_in      ( HBlank     ),
 	.vb_in      ( VBlank     ),

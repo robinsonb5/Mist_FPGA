@@ -164,10 +164,7 @@ always @(posedge clk_sys) begin
 	if(running && pe_in && !vb_in && !hb_in) begin
 		rowbuf[rowwptr]<=vin_rgb565;
 		if((rowwptr[3:0]==4'b1111) || (hb_in & !hb_in_d)) begin
-			if(rotation[0])
-				vidin_col<=in_xpos;
-			else
-				vidin_col<=in_xpos_max - in_xpos;	// Low 4 bits will be overriden
+			vidin_col<=in_xpos;
 			vidin_req<=1'b1;
 			rowrptr<={rowwptr[4],4'b0000};
 		end
@@ -176,10 +173,7 @@ always @(posedge clk_sys) begin
 
 	// Write pixels from linebuffer to SDRAM
 	vidin_d <= rowbuf[rowrptr];
-	if(rotation[0])	// Invert x coordinate if rotating anticlockwise
-		vidin_col[3:0] <= rowrptr[3:0];
-	else
-		vidin_col[3:0] <= ~rowrptr[3:0];
+	vidin_col[3:0] <= rowrptr[3:0];
 
 	// Terminate burst after 16 pixels
 	if(vidin_ack) begin
@@ -200,7 +194,7 @@ reg [15:0] linebuffer2 [0:2**HCNT_WIDTH-1];
 reg fetch;
 
 reg [HCNT_WIDTH-1:0] fetch_xpos;
-wire [HCNT_WIDTH-1:0] sd_ypos;
+reg [HCNT_WIDTH-1:0] sd_ypos;
 
 reg hb_sd_d;
 reg vs_sd_d;
@@ -233,7 +227,6 @@ frac_interp #(.bitwidth(HCNT_WIDTH),.fracwidth(vi_fracwidth),.centre(0)) interp_
 	.blank(vi_blank)
 );
 
-assign sd_ypos = vi_whole;
 reg fetchbuffer;
 
 always @(posedge clk_sys) begin
@@ -242,13 +235,15 @@ always @(posedge clk_sys) begin
 	hb_sd_d<=hb_sd;
 	vs_sd_d<=vs_sd;
 
+	sd_ypos <= rotation[0] ? vi_whole : in_xpos_max-vi_whole;
+	
 	if(!vb_sd && !hb_sd_d && hb_sd) begin // Increment row on hblank
 		hb_sd_stb<=1'b1;
 	end
 
 	if (vi_step) begin
 		fetch_xpos <= 10'b0;
-		fetch<=sd_ypos == (in_xpos_max-1'b1) ? 1'b0 : 1'b1; // Stop fetching if rounding causes us to reach the foot of the screen a row or two early.
+		fetch<=1'b1;
 		fetchbuffer<=fetchbuffer ^ vfilter;
 	end
 
