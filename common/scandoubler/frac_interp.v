@@ -1,32 +1,34 @@
-module frac_interp #(parameter bitwidth=10, parameter fracwidth=16, parameter centre=1) (
+//
+// frac_interp.v
+// 
+// Copyright (c) 2024 Alastair M. Robinson
+// 
+// This source file is free software: you can redistribute it and/or modify 
+// it under the terms of the GNU General Public License as published 
+// by the Free Software Foundation, either version 3 of the License, or 
+// (at your option) any later version. 
+// 
+// This source file is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of 
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the 
+// GNU General Public License for more details.
+// 
+// You should have received a copy of the GNU General Public License 
+// along with this program.  If not, see <http://www.gnu.org/licenses/>. 
+
+
+module frac_interp #(parameter bitwidth=10, parameter fracwidth=16) (
 	input clk,
 	input reset_n,
-	input [bitwidth-1:0] num, // Larger value
-	input [bitwidth-1:0] den, // Smaller value
+	input [bitwidth+fracwidth-1:0] stepsize,
+	input [bitwidth-1:0] offset,
 	input [bitwidth-1:0] limit, // Blank after this value is reached.
-	input newfraction,
-	output reg ready,
 	input step_reset,
 	input step_in,
 	output reg step_out,
 	output [bitwidth-1:0] whole,
 	output reg [fracwidth-1:0] fraction,
 	output blank
-);
-
-wire div_done;
-wire [bitwidth+fracwidth-1:0] step;
-wire [bitwidth+fracwidth-1:0] remain; /* not used */
-	
-unsigned_division #(.widthlog2(bitwidth+fracwidth)) div (
-	.clk(clk),
-	.reset_n(reset_n),
-	.dividend({num,{fracwidth{1'b0}}}),
-	.divisor({{fracwidth{1'b0}},den}),
-	.quotient(step),
-	.remainder(remain),
-	.req(newfraction),
-	.ack(div_done)
 );
 
 reg [bitwidth+fracwidth-1:0] spos;
@@ -36,46 +38,38 @@ wire [fracwidth-1:0] spos_frac = spos[fracwidth-1:0];
 reg [bitwidth-1:0] dpos;
 
 reg [bitwidth-1:0] whole_i;
-reg [bitwidth-1:0] offset;
+reg [bitwidth-1:0] offsetcounter;
 
 always @(posedge clk) begin
 	step_out<=1'b0;
 	if (step_in) begin
 		if(dpos>spos_whole) begin
-			spos<=spos+step;
+			spos<=spos+stepsize;
 			fraction<=spos_frac;
 			step_out<=1'b1;
 			whole_i<=whole_i+1;
 		end else
 			fraction<=0;
-		if(|offset)
-			offset<=offset-1;
+		if(|offsetcounter)
+			offsetcounter<=offsetcounter-1;
 		else
 			dpos<=dpos+1'b1;
 	end
-	if (newfraction || reset_n)
-		ready <= 1'b0;
 
-	if (centre && whole_i>limit) // HACK: Extend the span by one pixel when processing rows.
-		offset<={bitwidth{1'b1}}; // Ensure the rest of the span is blanked
+	if (whole_i==limit)
+		offsetcounter<={bitwidth{1'b1}}; // Ensure the rest of the span is blanked
 
-	if (!centre && whole_i==limit)
-		offset<={bitwidth{1'b1}}; // Ensure the rest of the span is blanked
-
-	if (step_reset || newfraction || !reset_n) begin
+	if (step_reset || !reset_n) begin
 		spos<=0;
 		dpos<=0;
 		whole_i<=0;
-		offset<=centre ? {den[bitwidth-2:0],1'b0}-num : 0;
+		offsetcounter<=offset;
 	end
-		
-	if(div_done)
-		ready<=1'b1;
 end
 
 assign whole=whole_i;
 
-assign blank=|offset;
+assign blank=|offsetcounter;
 
 endmodule
 
