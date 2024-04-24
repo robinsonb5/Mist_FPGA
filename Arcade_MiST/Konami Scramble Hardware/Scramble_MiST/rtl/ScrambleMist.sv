@@ -52,7 +52,7 @@ module ScrambleMist
 	output        SDRAM_CKE
 );
 
-`include "rtl\build_id.v"
+`include "build_id.v"
 
 `define CORE_NAME "SCRAMBLE"
 wire [6:0] core_mod;
@@ -60,6 +60,8 @@ wire [6:0] core_mod;
 localparam CONF_STR = {
 	`CORE_NAME, ";ROM;",
 	"O2,Rotate Controls,Off,On;",
+	"OGH,Orientation,Vertical,Clockwise,Anticlockwise;",
+	"OI,Rotation filter,Off,On;",
 	"O34,Scanlines,Off,25%,50%,75%;",
 	"O5,Blending,Off,On;",
 	"O6,Joystick Swap,Off,On;",
@@ -216,21 +218,25 @@ always @(*) begin
 end
 
 wire       rotate    = status[2];
+wire [1:0] rotate_screen = status[17:16];
+wire       rotate_filter = status[18];
 wire [1:0] scanlines = status[4:3];
 wire       blend     = status[5];
 wire       joyswap   = status[6];
 
 assign LED = ~ioctl_downl;
 assign AUDIO_R = AUDIO_L;
-assign SDRAM_CLK = clk_sys;
 assign SDRAM_CKE = 1;
 
+wire clk_vid;
 wire clk_sys;
 wire pll_locked;
 pll pll(
 	.inclk0(CLOCK_27),
 	.areset(0),
-	.c0(clk_sys),
+	.c0(clk_vid),
+	.c1(clk_sys),
+	.c2(SDRAM_CLK),
 	.locked(pll_locked)
 	);
 
@@ -331,35 +337,77 @@ data_io data_io(
 	.ioctl_dout    ( ioctl_dout   )
 );
 
+wire        vidin_req;
+wire        vidin_ack;
+wire  [10:0] vidin_row;
+wire  [10:0] vidin_col;
+wire [15:0] vidin_d;
+wire        vidin_frame;
+
+wire        vidout_req;
+wire        vidout_ack;
+wire  [10:0] vidout_row;
+wire  [10:0] vidout_col;
+wire [15:0] vidout_d;
+wire        vidout_frame;
+
 reg      port1_req;
+wire     port1_ack;
 reg [15:0] rom_dout;
 reg [14:0] rom_addr;
 
-sdram #(.MHZ(24)) sdram(
-	.*,
-	.init_n        ( pll_locked   ),
-	.clk           ( clk_sys      ),
+scandoubler_sdram sdram(
+	.sd_data(SDRAM_DQ),  // 16 bit bidirectional data bus
+	.sd_addr(SDRAM_A),   // 13 bit multiplexed address bus
+	.sd_dqm({SDRAM_DQMH,SDRAM_DQML}), // two byte masks
+	.sd_ba(SDRAM_BA),    // two banks
+	.sd_cs(SDRAM_nCS),   // a single chip select
+	.sd_we(SDRAM_nWE),   // write enable
+	.sd_ras(SDRAM_nRAS), // row address select
+	.sd_cas(SDRAM_nCAS), // columns address select
+
+	.init          (~pll_locked   ),
+	.clk_96        ( clk_vid      ),
 
 	// ROM upload
 	.port1_req     ( port1_req    ),
-	.port1_ack     ( ),
-	.port1_a       ( ioctl_addr[22:1] ),
+	.port1_ack     ( port1_ack    ),
+	.port1_addr    ( ioctl_addr[22:1] ),
 	.port1_ds      ( { ioctl_addr[0], ~ioctl_addr[0] } ),
 	.port1_we      ( ioctl_downl ),
-	.port1_d       ( {ioctl_dout, ioctl_dout} ),
+	.port1_din     ( {ioctl_dout, ioctl_dout} ),
 
 	// CPU
-	.cpu1_addr     ( ioctl_downl ? 17'h1ffff : {3'b000, rom_addr[14:1] } ),
-	.cpu1_q        ( rom_dout  )
+	.rom_oe       ( !ioctl_downl ),
+	.rom_addr     ( ioctl_downl ? 17'h1ffff : {3'b000, rom_addr[14:1] } ),
+	.rom_dout     ( rom_dout  ),
+
+		// SDRAM interface for rotation
+	.vidin_req  ( vidin_req  ),
+	.vidin_d    ( vidin_d    ),
+	.vidin_ack  ( vidin_ack  ),
+	.vidin_frame(vidin_frame ),
+	.vidin_row  ( vidin_row  ),
+	.vidin_col  ( vidin_col  ),
+
+	.vidout_req( vidout_req  ),
+	.vidout_q  ( vidout_d    ),
+	.vidout_ack( vidout_ack  ),
+	.vidout_frame( vidout_frame),
+	.vidout_row( vidout_row  ),
+	.vidout_col( vidout_col  )
 );
 
-always @(posedge clk_sys) begin
+always @(posedge clk_vid) begin
 	reg        ioctl_wr_last = 0;
 
+	if(port1_ack)
+		port1_req<=1'b0;
+	
 	ioctl_wr_last <= ioctl_wr;
 	if (ioctl_downl) begin
 		if (~ioctl_wr_last && ioctl_wr) begin
-			port1_req <= ~port1_req;
+			port1_req <= 1'b1;
 		end
 	end
 end
@@ -400,13 +448,15 @@ scramble_top scramble(
 	);
 
 mist_video #(.COLOR_DEPTH(6),.SD_HCNT_WIDTH(10)) mist_video(
-	.clk_sys(clk_sys),
+	.clk_sys(clk_vid),
 	.SPI_SCK(SPI_SCK),
 	.SPI_SS3(SPI_SS3),
 	.SPI_DI(SPI_DI),
-	.R(blankn ? r : 6'd0),
-	.G(blankn ? g : 6'd0),
-	.B(blankn ? b : 6'd0),
+	.HBlank(hb),
+	.VBlank(vb),
+	.R(r),
+	.G(g),
+	.B(b),
 	.HSync(~hs),
 	.VSync(~vs),
 	.VGA_R(VGA_R),
@@ -416,11 +466,29 @@ mist_video #(.COLOR_DEPTH(6),.SD_HCNT_WIDTH(10)) mist_video(
 	.VGA_HS(VGA_HS),
 	.no_csync(no_csync),
 	.rotate({1'b1,rotate}),
-	.ce_divider(1'b1),
+	.ce_divider(4'hf),
 	.blend(blend),
 	.scandoubler_disable(scandoublerD),
 	.scanlines(scanlines),
-	.ypbpr(ypbpr)
+	.ypbpr(ypbpr),
+	.rotate_screen(rotate_screen),
+	.rotate_hfilter(rotate_filter),
+	.rotate_vfilter(rotate_filter),
+	
+	// SDRAM interface for rotation
+	.vidin_req  ( vidin_req  ),
+	.vidin_d    ( vidin_d    ),
+	.vidin_ack  ( vidin_ack  ),
+	.vidin_frame(vidin_frame ),
+	.vidin_row  ( vidin_row  ),
+	.vidin_col  ( vidin_col  ),
+
+	.vidout_req( vidout_req  ),
+	.vidout_d  ( vidout_d    ),
+	.vidout_ack( vidout_ack  ),
+	.vidout_frame( vidout_frame),
+	.vidout_row( vidout_row  ),
+	.vidout_col( vidout_col  ),
 	);
 
 dac #(10) dac(
@@ -474,7 +542,7 @@ arcade_inputs inputs (
 	.joystick_0  ( joystick_0  ),
 	.joystick_1  ( joystick_1  ),
 	.rotate      ( rotate      ),
-	.orientation ( orientation ),
+	.orientation ( orientation ^ {1'b0, |rotate_screen} ),
 	.joyswap     ( joyswap     ),
 	.oneplayer   ( 1'b0        ),
 	.controls    ( {m_tilt, m_coin4, m_coin3, m_coin2, m_coin1, m_four_players, m_three_players, m_two_players, m_one_player} ),

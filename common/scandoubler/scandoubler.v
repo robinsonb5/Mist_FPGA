@@ -64,17 +64,17 @@ module scandoubler
 	
 	// Memory interface - to RAM (for rotation).  Operates on 16-word bursts
 	output wire         vidin_req,    // High at start of row, remains high until burst of 16 pixels has been delivered
-	output wire         vidin_frame,  // Odd or even frame for double-buffering
-	output wire [9:0]   vidin_row,    // Y position of current row.
-	output wire [9:0]   vidin_col,    // X position of current burst.
+	output wire [1:0]   vidin_frame,  // Odd or even frame for double-buffering
+	output wire [10:0]  vidin_row,    // Y position of current row.
+	output wire [10:0]  vidin_col,    // X position of current burst.
 	output wire [15:0]  vidin_d,      // Incoming video data
 	input wire          vidin_ack,    // Request next word from host
 	
 	// Memory interface - from RAM (for rotation).  Operates on 8-word bursts
 	output wire         vidout_req,   // High at start of row, remains high until entire row has been delivered
-	output wire         vidout_frame, // Odd or even frame for double-buffering
-	output wire [9:0]   vidout_row,   // Y position of current row.  (Controller maintains X counter)
-	output wire [9:0]   vidout_col,   // Y position of current row.  (Controller maintains X counter)
+	output wire [1:0]   vidout_frame, // Odd or even frame for double-buffering
+	output wire [10:0]  vidout_row,   // Y position of current row.  (Controller maintains X counter)
+	output wire [10:0]  vidout_col,   // Y position of current row.  (Controller maintains X counter)
 	input wire [15:0]   vidout_d,     // Outgoing video data
 	input wire          vidout_ack    // Valid data available.
 );

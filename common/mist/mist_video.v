@@ -27,7 +27,7 @@ module mist_video
 	input        ypbpr,
 	// Rotate OSD [0] - rotate [1] - left or right
 	input  [1:0] rotate,
-	input  [1:0] rotatescreen,
+	input  [1:0] rotate_screen,
 	input        rotate_hfilter,
 	input        rotate_vfilter,
 	// composite-like blending
@@ -92,7 +92,7 @@ scandoubler #(SD_HCNT_WIDTH, COLOR_DEPTH) scandoubler
 	.bypass     ( scandoubler_disable ),
 	.ce_divider ( ce_divider ),
 	.scanlines  ( scanlines  ),
-	.rotation   ( rotatescreen),
+	.rotation   ( rotate_screen),
 	.hfilter    ( rotate_hfilter),
 	.vfilter    ( rotate_vfilter),
 	.pixel_ena  ( pixel_ena  ),
