@@ -60,7 +60,7 @@ wire [6:0] core_mod;
 localparam CONF_STR = {
 	`CORE_NAME, ";ROM;",
 	"O2,Rotate Controls,Off,On;",
-	"OGH,Orientation,Vertical,Clockwise,Anticlockwise;",
+	"OGH,Orientation,Vertical,Clockwise,Anticlockwise,180 Degrees;",
 	"OI,Rotation filter,Off,On;",
 	"O34,Scanlines,Off,25%,50%,75%;",
 	"O5,Blending,Off,On;",
@@ -339,15 +339,15 @@ data_io data_io(
 
 wire        vidin_req;
 wire        vidin_ack;
-wire  [10:0] vidin_row;
-wire  [10:0] vidin_col;
+wire  [10:0] vidin_x;
+wire  [10:0] vidin_y;
 wire [15:0] vidin_d;
 wire        vidin_frame;
 
 wire        vidout_req;
 wire        vidout_ack;
-wire  [10:0] vidout_row;
-wire  [10:0] vidout_col;
+wire  [10:0] vidout_x;
+wire  [10:0] vidout_y;
 wire [15:0] vidout_d;
 wire        vidout_frame;
 
@@ -387,15 +387,15 @@ scandoubler_sdram sdram(
 	.vidin_d    ( vidin_d    ),
 	.vidin_ack  ( vidin_ack  ),
 	.vidin_frame(vidin_frame ),
-	.vidin_row  ( vidin_row  ),
-	.vidin_col  ( vidin_col  ),
+	.vidin_x  ( vidin_x  ),
+	.vidin_y  ( vidin_y  ),
 
 	.vidout_req( vidout_req  ),
 	.vidout_q  ( vidout_d    ),
 	.vidout_ack( vidout_ack  ),
 	.vidout_frame( vidout_frame),
-	.vidout_row( vidout_row  ),
-	.vidout_col( vidout_col  )
+	.vidout_x ( vidout_x  ),
+	.vidout_y ( vidout_y  )
 );
 
 always @(posedge clk_vid) begin
@@ -465,7 +465,7 @@ mist_video #(.COLOR_DEPTH(6),.SD_HCNT_WIDTH(10)) mist_video(
 	.VGA_VS(VGA_VS),
 	.VGA_HS(VGA_HS),
 	.no_csync(no_csync),
-	.rotate({1'b1,rotate}),
+	.rotate({~rotate_screen[1],rotate & ~(^rotate_screen)}),
 	.ce_divider(4'hf),
 	.blend(blend),
 	.scandoubler_disable(scandoublerD),
@@ -480,15 +480,15 @@ mist_video #(.COLOR_DEPTH(6),.SD_HCNT_WIDTH(10)) mist_video(
 	.vidin_d    ( vidin_d    ),
 	.vidin_ack  ( vidin_ack  ),
 	.vidin_frame(vidin_frame ),
-	.vidin_row  ( vidin_row  ),
-	.vidin_col  ( vidin_col  ),
+	.vidin_x    ( vidin_x  ),
+	.vidin_y    ( vidin_y  ),
 
 	.vidout_req( vidout_req  ),
 	.vidout_d  ( vidout_d    ),
 	.vidout_ack( vidout_ack  ),
 	.vidout_frame( vidout_frame),
-	.vidout_row( vidout_row  ),
-	.vidout_col( vidout_col  ),
+	.vidout_x  ( vidout_x    ),
+	.vidout_y  ( vidout_y    )
 	);
 
 dac #(10) dac(
@@ -542,7 +542,7 @@ arcade_inputs inputs (
 	.joystick_0  ( joystick_0  ),
 	.joystick_1  ( joystick_1  ),
 	.rotate      ( rotate      ),
-	.orientation ( orientation ^ {1'b0, |rotate_screen} ),
+	.orientation ( orientation ^ {&rotate_screen, ^rotate_screen} ),
 	.joyswap     ( joyswap     ),
 	.oneplayer   ( 1'b0        ),
 	.controls    ( {m_tilt, m_coin4, m_coin3, m_coin2, m_coin1, m_four_players, m_three_players, m_two_players, m_one_player} ),

@@ -195,15 +195,15 @@ scandoubler_rotate #(
 	.vidin_d(vidin_d),
 	.vidin_ack(vidin_ack),
 	.vidin_frame(vidin_frame),
-	.vidin_row(vidin_row),
-	.vidin_col(vidin_col),
+	.vidin_x(vidin_row),
+	.vidin_y(vidin_col),
 
 	.vidout_req(vidout_req),
 	.vidout_d(vidout_d),
 	.vidout_ack(vidout_ack),
 	.vidout_frame(vidout_frame),
-	.vidout_row(vidout_row),
-	.vidout_col(vidout_col)
+	.vidout_x(vidout_row),
+	.vidout_y(vidout_col)
 );
 
 

@@ -53,16 +53,16 @@ module mist_video
 	// Memory interface - to RAM (for rotation).  Operates on 16-word bursts
 	output wire         vidin_req,    // High at start of row, remains high until burst of 16 pixels has been delivered
 	output wire         vidin_frame,  // Odd or even frame for double-buffering
-	output wire [9:0]   vidin_row,    // Y position of current row.
-	output wire [9:0]   vidin_col,    // X position of current burst.
+	output wire [9:0]   vidin_x,      // Y position of current row.
+	output wire [9:0]   vidin_y,      // X position of current burst.
 	output wire [15:0]  vidin_d,      // Incoming video data
 	input wire          vidin_ack,    // Request next word from host
 	
 	// Memory interface - from RAM (for rotation).  Operates on 8-word bursts
 	output wire         vidout_req,   // High at start of row, remains high until entire row has been delivered
 	output wire         vidout_frame, // Odd or even frame for double-buffering
-	output wire [9:0]   vidout_row,   // Y position of current row.  (Controller maintains X counter)
-	output wire [9:0]   vidout_col,   // Y position of current row.  (Controller maintains X counter)
+	output wire [9:0]   vidout_x,     // X position of current row.
+	output wire [9:0]   vidout_y,     // Y position of current row.
 	input wire [15:0]   vidout_d,     // Outgoing video data
 	input wire          vidout_ack    // Valid data available.
 );
@@ -84,7 +84,8 @@ wire       SD_VS_O;
 wire       SD_HB_O;
 wire       SD_VB_O;
 
-wire       pixel_ena;
+wire       pixel_ena_x1;
+wire       pixel_ena_x2;
 
 scandoubler #(SD_HCNT_WIDTH, COLOR_DEPTH) scandoubler
 (
@@ -95,7 +96,8 @@ scandoubler #(SD_HCNT_WIDTH, COLOR_DEPTH) scandoubler
 	.rotation   ( rotate_screen),
 	.hfilter    ( rotate_hfilter),
 	.vfilter    ( rotate_vfilter),
-	.pixel_ena  ( pixel_ena  ),
+	.pixel_ena_x1  ( pixel_ena_x1  ),
+	.pixel_ena_x2  ( pixel_ena_x2  ),
 	.hb_in      ( HBlank     ),
 	.vb_in      ( VBlank     ),
 	.hs_in      ( HSync      ),
@@ -114,16 +116,18 @@ scandoubler #(SD_HCNT_WIDTH, COLOR_DEPTH) scandoubler
 	.vidin_d    ( vidin_d),
 	.vidin_ack  ( vidin_ack),
 	.vidin_frame( vidin_frame),
-	.vidin_row  ( vidin_row),
-	.vidin_col  ( vidin_col),
+	.vidin_x    ( vidin_x),
+	.vidin_y    ( vidin_y),
 
 	.vidout_req ( vidout_req),
 	.vidout_d   ( vidout_d),
 	.vidout_ack ( vidout_ack),
 	.vidout_frame( vidout_frame),
-	.vidout_row ( vidout_row),
-	.vidout_col ( vidout_col)
+	.vidout_x   ( vidout_x),
+	.vidout_y   ( vidout_y)
 );
+
+wire pixel_ena = pixel_ena_x2;
 
 wire [5:0] osd_r_o;
 wire [5:0] osd_g_o;

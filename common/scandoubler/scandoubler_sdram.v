@@ -41,7 +41,7 @@ module scandoubler_sdram (
 	output reg [15:0]  port1_dout,
 	input wire [22:0]  port1_addr,       // 24 bit word address
 	input wire [1:0]   port1_ds,         // upper/lower data strobe
-	input wire         port1_req,        // cpu/chipset requests read/write
+	input wire         port1_req,        // cpu/chipset requests read/write (level toggle)
 	input wire         port1_we,         // cpu/chipset requests write
 	output reg         port1_ack,
 
@@ -51,15 +51,15 @@ module scandoubler_sdram (
 
 	input wire         vidin_req,    // High at start of row, remains high until burst of 16 pixels has been delivered
 	input wire [1:0]   vidin_frame,  // Odd or even frame for double-buffering
-	input wire [10:0]  vidin_row,    // Y position of current row.
-	input wire [10:0]  vidin_col,    // X position of current burst.
+	input wire [10:0]  vidin_x,      // X position of current row.
+	input wire [10:0]  vidin_y,      // Y position of current burst.
 	input wire [15:0]  vidin_d,      // Incoming video data
 	output wire        vidin_ack,    // Request next word from host
 	
 	input wire         vidout_req,   // High at start of row, remains high until entire row has been delivered
 	input wire [1:0]   vidout_frame, // Odd or even frame for double-buffering
-	input wire [10:0]  vidout_row,   // Y position of current row.
-	input wire [10:0]  vidout_col,   // X position of current row
+	input wire [10:0]  vidout_x,     // X position of current row
+	input wire [10:0]  vidout_y,     // Y position of current row.
 	output reg [15:0]  vidout_q,     // Outgoing video data
 	output reg         vidout_ack    // Valid data available.
 );
@@ -143,6 +143,7 @@ reg       vidwrite;
 reg       vidwrite_next;
 
 reg       vidread;
+reg       vidread_extend; // One row contains sixteen pixels, so could extend a burst.
 
 assign vidin_ack = vidwrite_next;
 
@@ -151,6 +152,10 @@ assign sd_data=drive_dq ? sd_data_reg : 16'bZZZZZZZZZZZZZZZZ;
 reg clk_8_enD;
 
 assign ready = |reset ? 1'b0 : ~init;
+
+wire rom_req = rom_oe && (addr_latch != rom_addr);
+
+wire portswaiting = rom_req | (port1_req ^ port1_ack) | vidin_req;
 
 always @(posedge clk_96) begin
 	// permanently latch ram data to reduce delays
@@ -164,6 +169,8 @@ always @(posedge clk_96) begin
 		if (t == STATE_VIDWRITEEND)
 			t <= STATE_FIRST;
 	end else if (vidread) begin	
+		if ((t == STATE_READ+7) && vidread_extend)
+			t <= STATE_READ;
 		if (t == STATE_VIDREADEND)
 			t <= STATE_FIRST;
 	end else
@@ -193,14 +200,14 @@ always @(posedge clk_96) begin
 
 		end
 	end else begin
-		port1_ack<=1'b0;
 		vidout_ack<=1'b0;
 		// normal operation
 		if(t == STATE_FIRST) begin
 			req_latch <=1'b0;
 			vidwrite<=1'b0;
 			vidread<=1'b0;
-			if (port1_req) begin // Upload gets first priority
+			vidread_extend<=1'b0;
+			if (port1_req != port1_ack) begin // Upload gets first priority
 				addr_latch <= port1_addr;
 				req_latch <= 1;
 				din_latch <= port1_din;
@@ -211,7 +218,7 @@ always @(posedge clk_96) begin
 				sd_cmd <= CMD_ACTIVE;
 				sd_addr <= port1_addr[21:9];
 				sd_ba <= {1'b0,port1_addr[22]};
-			end else if (rom_oe && (addr_latch != rom_addr)) begin // ROM reads are next
+			end else if (rom_req) begin // ROM reads are next
 				addr_latch <= rom_addr;
 				req_latch <= 1;
 				rom_port <= 1;
@@ -224,16 +231,16 @@ always @(posedge clk_96) begin
 			end else if (vidin_req) begin // Then writing to the framebuffer
 				vidwrite<=1'b1;
 				sd_ba <= 2'b11;
-				sd_addr <= {vidin_frame,vidin_col[9:5],vidin_row[9:4]};
-//				$display("vidwrite (%t) bank %d, row %h", $time, {1'b1,vidin_col[3]}, {2'b11,vidin_frame,vidin_col[9:4],~vidin_row[9:6]});
+				sd_addr <= {vidin_frame,vidin_y[9:5],vidin_x[9:4]};
+//				$display("vidwrite (%t) bank %d, row %h", $time, {1'b1,vidin_y[3]}, {2'b11,vidin_frame,vidin_y[9:4],~vidin_x[9:6]});
 				sd_cmd <= CMD_ACTIVE;
 			end else if (vidout_req) begin // and finally reading back from the framebuffer
 				vidread<=1'b1;
 				// ba(0) <= x(3); // Stripe adjacent pixel blocks across banks
 				sd_ba <= 2'b11;
-				sd_addr <= {vidout_frame,vidout_row[9:5],vidout_col[9:4]};
+				sd_addr <= {vidout_frame,vidout_y[9:5],vidout_x[9:4]};
 				sd_cmd <= CMD_ACTIVE;
-//				$display("vidread  (%t) read bank %d, row %h", $time, {1'b1,vidout_row[3]}, {2'b11,vidout_frame,vidout_row[9:4],~vidout_col[9:6]});
+//				$display("vidread  (%t) read bank %d, row %h", $time, {1'b1,vidout_y[3]}, {2'b11,vidout_frame,vidout_y[9:4],~vidout_x[9:6]});
 
 			end else begin
 				req_latch <= 0;
@@ -272,12 +279,10 @@ always @(posedge clk_96) begin
 				sd_addr[10] <= 1'b0;
 				if(t==STATE_CMD_CONT+8)
 					sd_addr[10] <= 1'b1;	// Auto precharge
-				sd_addr[9:0] <= {vidin_row[10],vidin_col[4:0],vidin_row[3:0]};
+				sd_addr[9:0] <= {vidin_x[10],vidin_y[4:0],vidin_x[3:0]};
 				sd_cmd<=CMD_WRITE;
-//				$display("vidwrite (%t) bank %d, col %h", $time, sd_ba, {1'b0,vidin_col[2:0],~vidin_row[5:0]});
+//				$display("vidwrite (%t) bank %d, col %h", $time, sd_ba, {1'b0,vidin_y[2:0],~vidin_x[5:0]});
 			end
-			if(t==STATE_CMD_CONT+9)
-				vidwrite <= 1'b0;
 		end
 
 		// Video read:
@@ -294,11 +299,29 @@ always @(posedge clk_96) begin
 			if(t == STATE_CMD_CONT) begin
 				sd_dqm <= 2'b00;
 				sd_addr[12:11] <= 2'b00;
-				sd_addr[10] <= 1'b1; // Auto precharge
-				sd_addr[9:0] <= {vidout_col[10],vidout_row[4:0],vidout_col[3],3'b0};
+				sd_addr[10] <= 1'b0; // Don't auto precharge
+				sd_addr[9:0] <= {vidout_x[10],vidout_y[4:0],vidout_x[3],3'b0};
 				sd_cmd <= CMD_READ;
-//				$display("vidread  (%t) column %h", $time, {1'b0,vidout_row[2:0],vidout_col[5:0]});
+				vidread_extend <= ~vidout_x[3]; // Can we extend the transaction if the other ports aren't waiting?
+//				$display("vidread  (%t) column %h", $time, {1'b0,vidout_y[2:0],vidout_x[5:0]});
 			end
+
+			if(t==STATE_READ+6-{2'b0,CAS_LATENCY}) begin
+				sd_addr[10] <= 1'b0;
+				
+				if(vidout_req && vidread_extend && !portswaiting) begin
+					sd_addr[12:11] <= 2'b00;
+					sd_addr[10] <= 1'b0; // Don't auto precharge
+					sd_addr[9:0] <= {vidout_x[10],vidout_y[4:0],1'b1,3'b0};
+					sd_cmd <= CMD_READ;
+				end else begin
+					vidread_extend<=1'b0;
+					sd_cmd <= CMD_PRECHARGE;
+				end
+			end
+			
+			if(t==STATE_READ+7)
+				vidread_extend<=1'b0;
 			
 			if(t>=STATE_READ && t<(STATE_READ+8)) begin
 				vidout_q<=sd_din;
@@ -316,7 +339,7 @@ always @(posedge clk_96) begin
 				if (we_latch) begin
 					sd_data_reg <= din_latch;
 					drive_dq<=1'b1;
-					port1_ack <= 1'b1;
+					port1_ack <= port1_req;
 				end
 				// always return both bytes in a read. The cpu may not
 				// need it, but the caches need to be able to store everything
@@ -339,7 +362,7 @@ always @(posedge clk_96) begin
 						rom_dout <= sd_din;
 					else begin
 						port1_dout <= sd_din;
-						port1_ack <= 1'b1;
+						port1_ack <= port1_req;
 					end
 				end
 			end
