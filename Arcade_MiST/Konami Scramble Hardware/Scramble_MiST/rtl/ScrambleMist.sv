@@ -60,7 +60,7 @@ wire [6:0] core_mod;
 localparam CONF_STR = {
 	`CORE_NAME, ";ROM;",
 	"O2,Rotate Controls,Off,On;",
-	"OGH,Orientation,Vertical,Clockwise,Anticlockwise,180 Degrees;",
+	"OGH,Orientation,Vertical,Clockwise,180 Degrees;",
 	"OI,Rotation filter,Off,On;",
 	"O34,Scanlines,Off,25%,50%,75%;",
 	"O5,Blending,Off,On;",
@@ -218,7 +218,8 @@ always @(*) begin
 end
 
 wire       rotate    = status[2];
-wire [1:0] rotate_screen = status[17:16];
+wire [1:0] rotate_screen_raw = status[17:16];
+wire [1:0] rotate_screen = {rotate_screen_raw[1],|rotate_screen_raw};
 wire       rotate_filter = status[18];
 wire [1:0] scanlines = status[4:3];
 wire       blend     = status[5];
@@ -541,8 +542,8 @@ arcade_inputs inputs (
 	.key_code    ( key_code    ),
 	.joystick_0  ( joystick_0  ),
 	.joystick_1  ( joystick_1  ),
-	.rotate      ( rotate      ),
-	.orientation ( orientation ^ {&rotate_screen, ^rotate_screen} ),
+	.rotate      ( rotate & ~(^rotate_screen)), // Only rotate controls if screen if scandoubler isn't rotating
+	.orientation ( orientation ^ {rotate_screen[1], (^rotate_screen)} ),
 	.joyswap     ( joyswap     ),
 	.oneplayer   ( 1'b0        ),
 	.controls    ( {m_tilt, m_coin4, m_coin3, m_coin2, m_coin1, m_four_players, m_three_players, m_two_players, m_one_player} ),
