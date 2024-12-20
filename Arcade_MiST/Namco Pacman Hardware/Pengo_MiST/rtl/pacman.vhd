@@ -79,7 +79,16 @@ entity PACMAN_MACHINE is
 		in0_reg               : in  std_logic_vector( 7 downto 0);
 		in1_reg               : in  std_logic_vector( 7 downto 0);
 		dipsw1_reg            : in  std_logic_vector( 7 downto 0);
-		dipsw2_reg            : in  std_logic_vector( 7 downto 0)
+		dipsw2_reg            : in  std_logic_vector( 7 downto 0);
+
+		-- SDRAM
+		rom_addr         : out std_logic_vector(14 downto 0);
+		rom_dout         : in  std_logic_vector( 7 downto 0);
+
+		-- ROM upload
+		dl_addr          : in  std_logic_vector(15 downto 0);
+		dl_wr            : in  std_logic;
+		dl_data          : in  std_logic_vector( 7 downto 0)
 	);
 	end;
 
@@ -152,6 +161,8 @@ architecture RTL of PACMAN_MACHINE is
 	signal watchdog_reset_l : std_logic;
 
 begin
+
+	rom_addr <= cpu_addr(14 downto 0);
 
 	v_blank <= vblank;
 	h_blank <= hblank;
@@ -482,7 +493,8 @@ begin
 		ENA         => ena_6,
 		cpu_m1_l    => cpu_m1_l,
 		addr        => cpu_addr,
-		data        => program_rom
+		data        => program_rom,
+		ram_d       => rom_dout
 	);
 
 	u_rams : work.dpram generic map (12,8)
@@ -524,7 +536,11 @@ begin
 		O_BLUE        => video_b,
 		--
 		ENA_6         => ena_6,
-		CLK           => clk
+		CLK           => clk,
+
+		dl_addr     => dl_addr,
+		dl_data     => dl_data,
+		dl_wr       => dl_wr
 	);
 
 	--
@@ -544,7 +560,11 @@ begin
 		--
 		O_AUDIO       => audio,
 		ENA_6         => ena_6,
-		CLK           => clk
+		CLK           => clk,
+
+		dl_addr     => dl_addr,
+		dl_data     => dl_data,
+		dl_wr       => dl_wr
 	);
 
 end RTL;

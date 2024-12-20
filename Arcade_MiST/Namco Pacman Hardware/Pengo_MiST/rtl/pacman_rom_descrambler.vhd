@@ -243,7 +243,9 @@ entity rom_descrambler is
 		--
 		cpu_m1_l : in  std_logic;
 		addr     : in  std_logic_vector(15 downto 0);
-		data     : out std_logic_vector( 7 downto 0)
+		data     : out std_logic_vector( 7 downto 0);
+		--
+		ram_d    : in std_logic_vector(7 downto 0)
 	);
 
 end rom_descrambler;
@@ -259,21 +261,21 @@ architecture rtl of rom_descrambler is
 	signal rom_data_out : std_logic_vector( 7 downto 0);
 	signal sega_dec     : std_logic_vector( 7 downto 0);
 begin
-	-- ROM at 0000 - 3FFF
-	u_program_rom0 : entity work.ROM_PGM_0
-	port map (
-		CLK         => CLK,
-		ADDR        => rom_addr(13 downto 0),
-		DATA        => rom_lo
-	);
-
-	-- ROM at 8000 - BFFF (Liz Wiz)
-	u_program_rom1 : entity work.ROM_PGM_1
-	port map (
-		CLK         => CLK,
-		ADDR        => rom_addr(13 downto 0),
-		DATA        => rom_hi
-	);
+--	-- ROM at 0000 - 3FFF
+--	u_program_rom0 : entity work.ROM_PGM_0
+--	port map (
+--		CLK         => CLK,
+--		ADDR        => rom_addr(13 downto 0),
+--		DATA        => rom_lo
+--	);
+--
+--	-- ROM at 8000 - BFFF (Liz Wiz)
+--	u_program_rom1 : entity work.ROM_PGM_1
+--	port map (
+--		CLK         => CLK,
+--		ADDR        => rom_addr(13 downto 0),
+--		DATA        => rom_hi
+--	);
 
 	-- Sega ROM descrambler adapted from MAME segacrpt.c source code
 	u_sega_decode : entity work.sega_decode
@@ -338,11 +340,13 @@ begin
 
 		-- mux ROMs to same data bus
 		-- ignore A15 so that Pacman ROMs 0000-3FFF mirror in high mem at 8000-BFFF
-		if rom_addr(14) = '0' then
-			rom_data_in <= rom_lo;
-		else
-			rom_data_in <= rom_hi;
-		end if;
+--		if rom_addr(14) = '0' then
+--			rom_data_in <= rom_lo;
+--		else
+--			rom_data_in <= rom_hi;
+--		end if;
+
+		rom_data_in <= ram_d;
 
 		--	Mr TNT program ROMs have data lines D3 and D5 swapped
 		--	Mr TNT  video  ROMs have data lines D4 and D6 and address lines A0 and A2 swapped

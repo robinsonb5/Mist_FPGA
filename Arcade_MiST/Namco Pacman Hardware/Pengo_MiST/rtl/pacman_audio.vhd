@@ -62,7 +62,11 @@ entity PACMAN_AUDIO is
     --
     O_AUDIO           : out   std_logic_vector(7 downto 0);
     ENA_6             : in    std_logic;
-    CLK               : in    std_logic
+    CLK               : in    std_logic;
+
+	dl_addr           : in    std_logic_vector(15 downto 0);
+	dl_data           : in    std_logic_vector(7 downto 0);
+	dl_wr             : in    std_logic
     );
 end;
 
@@ -186,12 +190,24 @@ begin
 
   end process;
 
-  audio_rom_1m : entity work.PROM1_DST
+sndrom : block
+	signal snd_wr : std_logic;
+begin
+
+	snd_wr <= dl_wr when dl_addr(15 downto 8)=X"C4" else '0';
+
+  audio_rom_1m : entity work.BlankROM
+	generic map (
+		addrbits => 8
+	)
     port map(
       CLK         => CLK,
       ADDR        => rom1m_addr,
-      DATA        => rom1m_data
-      );
+      DATA        => rom1m_data,
+	  dl_addr     => dl_addr(7 downto 0),
+	  dl_data     => dl_data,
+	  dl_wr       => snd_wr
+    );
 
   p_original_output_reg : process
   begin
@@ -205,5 +221,6 @@ begin
       end if;
     end if;
   end process;
+end block;
 
 end architecture RTL;

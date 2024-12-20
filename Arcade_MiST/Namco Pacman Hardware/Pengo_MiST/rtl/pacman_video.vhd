@@ -69,7 +69,11 @@ port (
 	O_GREEN           : out   std_logic_vector(2 downto 0);
 	O_BLUE            : out   std_logic_vector(1 downto 0);
 	ENA_6             : in    std_logic;
-	CLK               : in    std_logic
+	CLK               : in    std_logic;
+	
+	dl_addr           : in    std_logic_vector(15 downto 0);
+	dl_data           : in    std_logic_vector(7 downto 0);
+	dl_wr             : in    std_logic
 );
 end;
 
@@ -217,12 +221,30 @@ begin
 	char_rom_5ef_dout <= char_rom_5ef_buf(7) & char_rom_5ef_buf(4) & char_rom_5ef_buf(5) & char_rom_5ef_buf(6) & char_rom_5ef_buf(3 downto 0) when MRTNT = '1' else char_rom_5ef_buf;
 
 	-- char roms
-	char_rom_5ef : entity work.GFX1
+--	char_rom_5ef : entity work.GFX1
+--	port map (
+--		CLK         => CLK,
+--		ADDR        => ca,
+--		DATA        => char_rom_5ef_buf
+--	);
+
+charrom : block
+	signal char_wr : std_logic;
+begin
+
+	char_wr <= dl_wr when dl_addr(15 downto 14)="10" else '0';
+
+	char_rom_5ef : entity work.BlankROM
 	port map (
 		CLK         => CLK,
 		ADDR        => ca,
-		DATA        => char_rom_5ef_buf
+		DATA        => char_rom_5ef_buf,
+		dl_addr     => dl_addr(13 downto 0),
+		dl_data     => dl_data,
+		dl_wr       => char_wr
 	);
+
+end block;
 
 	p_char_shift : process
 	begin
@@ -277,7 +299,16 @@ begin
 		end if;
 	end process;
 
-	col_rom_4a : entity work.PROM4_DST
+colrom : block
+	signal col_wr : std_logic;
+begin
+
+	col_wr <= dl_wr when dl_addr(15 downto 10)="110000" else '0';
+
+	col_rom_4a : entity work.BlankROM
+	generic map (
+		addrbits => 10
+	)
 	port map (
 		CLK              => CLK,
 		ADDR(9)          => '0',
@@ -285,8 +316,12 @@ begin
 		ADDR(7)          => '0',
 		ADDR(6 downto 2) => vout_db(4 downto 0),
 		ADDR(1 downto 0) => shift_op(1 downto 0),
-		DATA             => lut_4a
+		DATA             => lut_4a,
+		dl_addr          => dl_addr(9 downto 0),
+		dl_data          => dl_data,
+		dl_wr            => col_wr
 	);
+end block;
 
 	cntr_ld <= '1' when (I_HCNT(3 downto 0) = "0111") and (vout_hblank='1' or vout_obj_on='0') else '0';
 
@@ -367,14 +402,27 @@ begin
 	end process;
 
 	-- assign video outputs from color LUT PROM
-	col_rom_7f : entity work.PROM7_DST
+colrom7 : block
+	signal col_wr : std_logic;
+begin
+
+	col_wr <= dl_wr when dl_addr(15 downto 8)=X"c6" else '0';
+
+	col_rom_7f : entity work.BlankROM
+	generic map (
+		addrbits => 5
+	)
 	port map (
 		CLK              => CLK,
 		ADDR(4)          => I_PS(0),
 		ADDR(3 downto 0) => final_col,
 		DATA(2 downto 0) => O_RED,
 		DATA(5 downto 3) => O_GREEN,
-		DATA(7 downto 6) => O_BLUE
+		DATA(7 downto 6) => O_BLUE,
+		dl_addr          => dl_addr(4 downto 0),
+		dl_data          => dl_data,
+		dl_wr            => col_wr		
 	);
+end block;
 
 end architecture;
